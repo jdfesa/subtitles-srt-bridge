@@ -3,6 +3,8 @@
 Herramienta automatizada para generar, traducir y organizar subtítulos de videos localmente.
 Utiliza **OpenAI Whisper** para la transcripción y **Deep Translator** (Google Backend) para la traducción, eliminando la necesidad de herramientas web manuales.
 
+![Preview](preview.png)
+
 ## 🚀 Características
 *   **Generación Automática**: Crea subtítulos en inglés (`.srt`) a partir de archivos de video (`.mp4`) usando Whisper.
 *   **Traducción Local**: Traduce automáticamente los subtítulos al español preservando los tiempos exactos.
