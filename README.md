@@ -1,13 +1,13 @@
 # Subtitles Bridge Automation
 
-Herramienta automatizada para generar, traducir y organizar subtítulos de videos localmente.
-Utiliza **OpenAI Whisper** para la transcripción y **Deep Translator** (Google Backend) para la traducción, eliminando la necesidad de herramientas web manuales.
+Herramienta automatizada para generar, traducir y organizar subtítulos de videos desde una computadora personal.
+Utiliza **OpenAI Whisper** para la transcripción local y **Deep Translator** (Google Backend) para la traducción remota, eliminando el trabajo web manual. La traducción predeterminada requiere Internet y envía el texto al servicio de Google.
 
 ![Preview](preview.png)
 
 ## 🚀 Características
 *   **Generación Automática**: Crea subtítulos en inglés (`.srt`) a partir de archivos de video (`.mp4`) usando Whisper.
-*   **Traducción Local**: Traduce automáticamente los subtítulos al español preservando los tiempos exactos.
+*   **Traducción Automatizada**: Traduce los subtítulos al español preservando los tiempos exactos.
 *   **Organización Inteligente**:
     *   Subtítulos en **Español** (`.srt`) -> Se guardan junto al video (para reproducción directa).
     *   Subtítulos en **Inglés** (`.en.srt`) -> Se mueven ordenadamente a una subcarpeta `sub_en/`.
@@ -30,7 +30,7 @@ Debes tener instalado:
 
 ---
 
-## �️ Instalación y Uso
+## 🛠️ Instalación y Uso
 
 Este proyecto incluye un **Menú Interactivo** (`menu.sh`) que maneja todo el ciclo de vida del programa.
 
@@ -77,7 +77,14 @@ Este fue el desafío principal durante el desarrollo en macOS con Python 3.12.
 *   `setup.sh`: Script de "backend" para la instalación y gestión de dependencias complejas.
 *   `process_videos.py`: El cerebro de la operación. Contiene la lógica de Whisper, traducción y gestión de archivos.
 *   `local_translate_srt.py`: Módulo auxiliar para la traducción de bloques de texto SRT.
-*   `requirements.txt`: Lista de versiones exactas de librerías probadas (`llvmlite==0.43.0`, `numba==0.60.0`).
+*   `requirements.txt`: Lista de dependencias; fija las versiones de NumPy, llvmlite y Numba, pero no todas las dependencias transitivas.
+
+## 🧭 Estado y próximos pasos
+
+El proyecto está en etapa de prototipo. La revisión técnica, el alcance
+propuesto y las decisiones abiertas están en
+[`docs/PROJECT.md`](docs/PROJECT.md). Las mejoras priorizadas y sus criterios de
+aceptación están en [`BACKLOG.md`](BACKLOG.md).
 
 ---
 
