@@ -15,3 +15,7 @@ class SourceVideoError(SubtitleBridgeError):
 
 class MediaInspectionError(SubtitleBridgeError):
     """FFprobe could not produce a usable media inventory."""
+
+
+class PlanningError(SubtitleBridgeError):
+    """The supplied planning inputs are inconsistent or duplicated."""

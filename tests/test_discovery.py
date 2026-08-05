@@ -229,7 +229,7 @@ class WorkspaceDiscoveryTests(unittest.TestCase):
         self.assertEqual(result.issues[0].kind, DiscoveryIssueKind.INSPECTION_FAILED)
         self.assertEqual(result.issues[0].path, broken.resolve())
 
-    def test_records_existing_output_without_creating_managed_directories(self):
+    def test_records_existing_destinations_without_creating_managed_directories(self):
         root, paths = self.make_workspace()
         video = root / "lesson.mkv"
         video.touch()
@@ -237,6 +237,7 @@ class WorkspaceDiscoveryTests(unittest.TestCase):
         initial_entries = {path.relative_to(root) for path in root.rglob("*")}
         result = WorkspaceDiscovery(FakeProbe(), SrtValidator()).inspect(paths)
         self.assertIsNone(result.inventory_for(video).existing_output)
+        self.assertIsNone(result.inventory_for(video).existing_trash)
         self.assertEqual(
             {path.relative_to(root) for path in root.rglob("*")},
             initial_entries,
@@ -248,6 +249,12 @@ class WorkspaceDiscoveryTests(unittest.TestCase):
         result = WorkspaceDiscovery(FakeProbe(), SrtValidator()).inspect(paths)
 
         self.assertEqual(result.inventory_for(video).existing_output, output.resolve())
+
+        trash = root / "trash" / "lesson"
+        trash.mkdir(parents=True)
+        result = WorkspaceDiscovery(FakeProbe(), SrtValidator()).inspect(paths)
+
+        self.assertEqual(result.inventory_for(video).existing_trash, trash.resolve())
 
     def test_numeric_suffix_is_not_guessed_as_metadata(self):
         root, paths = self.make_workspace()

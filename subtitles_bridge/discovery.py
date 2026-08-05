@@ -172,12 +172,14 @@ class WorkspaceDiscovery:
                 )
             )
             output_path = paths.output_for(video)
+            trash_path = paths.trash_for(video)
             inventories.append(
                 VideoInventory(
                     source=video,
                     streams=inspection.streams,
                     subtitles=embedded + external,
                     existing_output=output_path if output_path.exists() else None,
+                    existing_trash=trash_path if trash_path.exists() else None,
                     format_name=inspection.format_name,
                     duration_seconds=inspection.duration_seconds,
                     chapters=inspection.chapters,

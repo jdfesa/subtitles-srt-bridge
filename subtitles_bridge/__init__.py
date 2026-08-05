@@ -2,6 +2,7 @@
 
 from .models import (
     ArtifactState,
+    BatchPlan,
     DiscoveryIssue,
     DiscoveryIssueKind,
     DiscoveryResult,
@@ -10,6 +11,7 @@ from .models import (
     MediaStream,
     PipelineStage,
     PlanDecision,
+    PlanningChoice,
     ResultStatus,
     StageAction,
     StreamKind,
@@ -24,6 +26,7 @@ from .paths import WorkspacePaths
 
 __all__ = [
     "ArtifactState",
+    "BatchPlan",
     "DiscoveryIssue",
     "DiscoveryIssueKind",
     "DiscoveryResult",
@@ -32,6 +35,7 @@ __all__ = [
     "MediaStream",
     "PipelineStage",
     "PlanDecision",
+    "PlanningChoice",
     "ResultStatus",
     "StageAction",
     "StreamKind",

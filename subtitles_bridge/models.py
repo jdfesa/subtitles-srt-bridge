@@ -169,6 +169,7 @@ class VideoInventory:
     streams: tuple[MediaStream, ...] = ()
     subtitles: tuple[SubtitleArtifact, ...] = ()
     existing_output: Path | None = None
+    existing_trash: Path | None = None
     format_name: str | None = None
     duration_seconds: float | None = None
     chapters: tuple[MediaChapter, ...] = ()
@@ -225,17 +226,67 @@ class VideoPlan:
     output_path: Path
     trash_path: Path
     decisions: tuple[PlanDecision, ...]
+    selected_subtitles: tuple[SubtitleArtifact, ...] = ()
+    transcription_audio_index: int | None = None
+    uses_verified_output: bool = False
 
     def __post_init__(self) -> None:
         stages = [decision.stage for decision in self.decisions]
         if len(stages) != len(set(stages)):
             raise ValueError("Each pipeline stage can appear only once in a plan")
+        if any(
+            subtitle.state is not ArtifactState.VALID
+            for subtitle in self.selected_subtitles
+        ):
+            raise ValueError("A plan can select only valid subtitles")
+
+        transcribe = next(
+            (
+                decision
+                for decision in self.decisions
+                if decision.stage is PipelineStage.TRANSCRIBE
+            ),
+            None,
+        )
+        if transcribe is not None and transcribe.action is StageAction.RUN:
+            if self.transcription_audio_index is None:
+                raise ValueError("A transcription plan requires an audio stream")
+            audio_indices = {stream.index for stream in self.inventory.audio_streams}
+            if self.transcription_audio_index not in audio_indices:
+                raise ValueError("Transcription audio must belong to the inventory")
+        elif self.transcription_audio_index is not None:
+            raise ValueError("A skipped or blocked transcription cannot select audio")
+
+        if self.uses_verified_output and self.inventory.existing_output is None:
+            raise ValueError("A verified output plan requires an existing output")
 
     def decision_for(self, stage: PipelineStage) -> PlanDecision:
         for decision in self.decisions:
             if decision.stage is stage:
                 return decision
         raise KeyError(stage)
+
+    @property
+    def has_needs_input(self) -> bool:
+        return any(
+            decision.action is StageAction.NEEDS_INPUT
+            for decision in self.decisions
+        )
+
+    @property
+    def is_executable(self) -> bool:
+        return not self.has_needs_input
+
+
+@dataclass(frozen=True, slots=True)
+class PlanningChoice:
+    source: Path
+    audio_stream_index: int | None = None
+    verified_output: Path | None = None
+
+    def __post_init__(self) -> None:
+        if self.audio_stream_index is not None and self.audio_stream_index < 0:
+            raise ValueError("Selected audio stream cannot be negative")
 
 
 @dataclass(frozen=True, slots=True)
@@ -268,4 +319,25 @@ class DiscoveryResult:
         for inventory in self.inventories:
             if inventory.source.resolve() == resolved_source:
                 return inventory
+        raise KeyError(source)
+
+
+@dataclass(frozen=True, slots=True)
+class BatchPlan:
+    videos: tuple[VideoPlan, ...]
+    issues: tuple[DiscoveryIssue, ...] = ()
+
+    @property
+    def has_needs_input(self) -> bool:
+        return bool(self.issues) or any(plan.has_needs_input for plan in self.videos)
+
+    @property
+    def is_executable(self) -> bool:
+        return not self.has_needs_input
+
+    def plan_for(self, source: Path) -> VideoPlan:
+        resolved_source = source.resolve()
+        for plan in self.videos:
+            if plan.inventory.source.resolve() == resolved_source:
+                return plan
         raise KeyError(source)
