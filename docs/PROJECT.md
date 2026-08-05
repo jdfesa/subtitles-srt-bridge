@@ -184,6 +184,9 @@ Los scripts `.sh` pueden ofrecer instalación o una interfaz interactiva, pero
 no contendrán la lógica principal ni serán la única forma de ejecutar el
 programa.
 
+Los límites técnicos y la dirección de dependencias del paquete se describen
+en [`ARCHITECTURE.md`](ARCHITECTURE.md).
+
 ## Alcance mínimo de la primera versión confiable
 
 - macOS validado primero, con núcleo portable.
@@ -219,7 +222,8 @@ y debe considerarse un prototipo:
 - algunos fallos no llegan al código de salida y hay mensajes con variables no
   interpoladas;
 - los scripts dependen del directorio de trabajo;
-- no existen pruebas automatizadas ni CI;
+- existe una red de seguridad offline y un núcleo modular inicial, pero todavía
+  no hay CI;
 - la traducción actual usa Google y requiere Internet;
 - no existe preflight, planner, staging, verificación ni archivado;
 - el normalizador MP4 importado es una CLI monolítica independiente y no debe

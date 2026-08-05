@@ -18,6 +18,8 @@ python3 -m unittest discover -s tests -v
 - La traducción usa un traductor falso y nunca accede a Internet.
 - Los movimientos y archivos se limitan a directorios temporales.
 - No se modifican archivos de producción ni medios reales.
+- Los modelos, rutas y puertos del núcleo nuevo se prueban sin adaptadores
+  externos.
 
 ## Defectos reproducidos
 

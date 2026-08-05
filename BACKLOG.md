@@ -64,7 +64,7 @@ la utilidad FFmpeg importada.
   ocultarlos ni impedir que la red de seguridad se ejecute.
 - No se modificó comportamiento productivo en esta fase.
 
-### [ ] P0.2 Crear un núcleo Python modular
+### [x] P0.2 Crear un núcleo Python modular
 
 Separar responsabilidades antes de incorporar el nuevo comportamiento, sin
 crear un framework innecesario.
@@ -88,6 +88,16 @@ crear un framework innecesario.
 - No se concentra el nuevo pipeline en un único script monolítico.
 - El prototipo existente queda protegido o reemplazado gradualmente bajo
   pruebas.
+
+**Resultado**
+
+- El paquete `subtitles_bridge/` define modelos inmutables, errores, política de
+  rutas y puertos tipados sin dependencias externas.
+- La arquitectura y sus límites están documentados en
+  [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+- Se agregaron 21 pruebas del núcleo; la suite completa ejecuta 50 casos y
+  conserva los 12 defectos legados como `expectedFailure`.
+- Los scripts productivos existentes permanecen sin cambios.
 
 ### [ ] P0.3 Implementar inventario y asociación conservadora
 

@@ -62,8 +62,9 @@ videos/
 
 ## Estado del proyecto
 
-El contrato funcional está documentado, pero todavía no está implementado. El
-código actual es un prototipo anterior que:
+El contrato funcional todavía no está implementado de extremo a extremo. Ya
+existen la red de seguridad P0.1 y el núcleo modular P0.2, pero el comando de
+procesamiento actual sigue siendo un prototipo anterior que:
 
 - procesa únicamente MP4;
 - genera un SRT inglés con Whisper;
@@ -73,8 +74,8 @@ código actual es un prototipo anterior que:
 Por tanto, el menú actual no debe interpretarse como la experiencia final ni
 usarse todavía para confiarle el movimiento de archivos importantes.
 
-La implementación avanzará en fases pequeñas: pruebas, núcleo modular,
-preflight, generación condicional, remux, verificación y cuarentena.
+Las siguientes fases incorporarán preflight, generación condicional, remux,
+verificación y cuarentena sin saltar los límites ya establecidos.
 
 ## Pruebas
 
@@ -112,6 +113,8 @@ CLI estarán implementadas en Python.
 - `setup.sh`: instalación del entorno actual.
 - `process_videos.py`: orquestación monolítica del flujo anterior.
 - `local_translate_srt.py`: traducción remota del flujo anterior.
+- `subtitles_bridge/`: núcleo nuevo con modelos, rutas y puertos; todavía no
+  ejecuta el pipeline.
 - `tools/normalize_video_mp4/`: utilidad independiente importada para estudiar
   FFprobe, FFmpeg y metadata; no define el contenedor final del nuevo pipeline.
 
@@ -120,6 +123,8 @@ CLI estarán implementadas en Python.
 - [`docs/PROJECT.md`](docs/PROJECT.md): objetivo, alcance y decisiones.
 - [`docs/WORKFLOW.md`](docs/WORKFLOW.md): preflight, matriz y transacción por
   video.
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): límites del núcleo Python y
+  dirección de dependencias.
 - [`BACKLOG.md`](BACKLOG.md): fases, orden y criterios de aceptación.
 - [`tests/README.md`](tests/README.md): alcance de la red de seguridad y fallos
   conocidos reproducidos.
