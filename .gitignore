@@ -3,3 +3,7 @@ __pycache__/
 *.pyc
 .DS_Store
 sub_en/
+sub_es/
+output/
+*.normalized.mp4
+*.subtitled.mp4
