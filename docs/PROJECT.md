@@ -2,25 +2,50 @@
 
 ## Resumen
 
-Subtitles Bridge es una CLI para un flujo concreto: tomar una carpeta con
-videos, reutilizar o generar subtítulos en inglés y español, conservar ambos
-archivos y crear un MP4 final donde VLC permita seleccionar cualquiera de los
-dos idiomas.
+Subtitles Bridge es una CLI para procesar una carpeta con uno o más videos,
+reutilizar todos los subtítulos válidos que ya estén asociados a cada video y
+generar un subtítulo únicamente cuando no exista ninguno. El resultado es un
+MKV nuevo con las pistas de subtítulos seleccionables, sin quemarlas sobre la
+imagen ni modificar la calidad del contenido original.
 
-El objetivo no es construir un editor de subtítulos ni una plataforma de
-video. La prioridad es que este flujo sea confiable, reanudable y sencillo de
-usar en una computadora personal. Debe poder ejecutarse en macOS, Linux y
-Windows, pero el desarrollo y la validación comienzan en macOS.
+La prioridad no es convertir formatos, traducir siempre ni normalizar video.
+La prioridad es resolver de forma segura y reanudable el ciclo de vida de los
+subtítulos. El núcleo debe ser portable a macOS, Linux y Windows, aunque el
+desarrollo y la validación comienzan en macOS.
 
 ## Objetivo acordado
 
-> Procesar de forma confiable una carpeta de videos, reutilizar los subtítulos
-> existentes o generar únicamente los faltantes, conservar sus SRT en inglés y
-> español, y producir un MP4 nuevo con ambas pistas
-> seleccionables en VLC, sin quemar texto sobre la imagen, repetir trabajo
-> válido ni sobrescribir archivos del usuario de manera inesperada.
+> Procesar de forma confiable una carpeta de videos, incorporar como pistas
+> seleccionables todos los subtítulos válidos asociados a cada uno y generar
+> un único subtítulo en el idioma hablado solamente cuando no exista ninguno;
+> crear un MKV nuevo sin recodificar ni descartar streams, verificarlo y, solo
+> entonces, mover automáticamente los insumos ya integrados a `trash/` para
+> que el usuario decida cuándo eliminarlos definitivamente.
+
+## Prioridades del producto
+
+1. Reutilizar antes de generar.
+2. Incorporar todos los subtítulos asociados, no solo inglés y español.
+3. Generar un subtítulo únicamente si no existe ninguno válido.
+4. Conservar sin recodificación todos los streams del video original.
+5. Publicar y archivar insumos solo después de verificar el resultado.
+6. Mantener cada etapa modular, comprobable y reanudable.
+7. Evaluar MP4 u otras conversiones únicamente como opciones posteriores.
+
+## Conceptos separados
+
+- **Idioma del audio:** solo determina qué audio transcribir y en qué idioma
+  generar un subtítulo cuando no existe ninguno.
+- **Subtítulos disponibles:** determinan qué pistas se incorporan. Si hay uno
+  o varios, se incorporan todos y no se ejecuta Whisper.
+- **Contenedor:** MP4 y MKV no determinan por sí mismos la calidad. MKV se elige
+  como salida porque es flexible para múltiples streams y subtítulos.
+- **Remultiplexado:** cambiar o reconstruir el contenedor copiando streams no
+  es comprimir. El flujo objetivo no recodifica audio ni video.
 
 ## Flujo implementado actualmente
+
+El código existente todavía es un prototipo anterior al contrato confirmado:
 
 ```mermaid
 flowchart LR
@@ -33,148 +58,202 @@ flowchart LR
 
 1. `menu.sh` ofrece instalación, procesamiento, limpieza y ayuda.
 2. `setup.sh` crea `.venv` e instala las dependencias.
-3. `process_videos.py` busca archivos `.mp4` en el directorio indicado.
+3. `process_videos.py` busca únicamente archivos `.mp4`.
 4. Whisper genera un SRT en inglés con el modelo `small`.
-5. `local_translate_srt.py` traduce el texto al español con Google mediante
-   `deep-translator`.
-6. El SRT en español queda junto al video y el inglés se mueve a `sub_en/`.
-7. En ejecuciones posteriores se omiten etapas según los archivos existentes.
+5. `local_translate_srt.py` lo traduce al español mediante Google.
+6. El flujo no crea todavía el archivo final con pistas seleccionables.
 
-La utilidad incorporada en `tools/normalize_video_mp4/` ya puede crear un MP4
-con pistas seleccionables, pero todavía no está conectada al flujo por lotes.
+La utilidad de `tools/normalize_video_mp4/` es independiente y sirve como
+referencia para FFprobe, FFmpeg y metadatos, pero su objetivo de normalizar a
+MP4 ya no define el pipeline principal.
 
-## Flujo objetivo incremental
+## Flujo objetivo
 
 ```mermaid
-flowchart LR
-    A["Carpeta con MP4 o MKV"] --> B["Preflight: inspeccionar video y subtítulos"]
-    B --> C{"¿Qué subtítulos existen?"}
-    C -- "Inglés y español" --> D["Reutilizar ambos"]
-    C -- "Solo inglés" --> E["Aplicar política de un solo idioma"]
-    C -- "Ninguno" --> F["Whisper y luego traducción"]
-    C -- "Solo español" --> G["Aplicar política de un solo idioma"]
-    D --> H["Conservar sidecars"]
-    E --> H
-    F --> H
-    G --> H
-    H --> I["FFmpeg: remux o normalización"]
-    A --> I
-    I --> J["Verificar MP4 con pistas seleccionables"]
-    J --> K["Publicar en output/"]
+flowchart TD
+    A["Carpeta con uno o más MP4/MKV"] --> B["Preflight por video"]
+    B --> C{"¿Existe algún subtítulo válido?"}
+    C -- "Sí: uno o varios" --> D["Reutilizar todos"]
+    C -- "No" --> E["Elegir audio y detectar idioma"]
+    E --> F["Whisper: generar un SRT"]
+    D --> G["Remux a MKV copiando todos los streams"]
+    F --> G
+    G --> H["Verificar streams, subtítulos y duración"]
+    H -- "Correcto" --> I["Publicar en output/"]
+    I --> J["Mover original y sidecars usados a trash/"]
+    H -- "Falla" --> K["Conservar todos los insumos"]
 ```
 
-Whisper puede leer el archivo fuente directamente mediante FFmpeg. No es
-necesario convertir primero un MKV completo: la normalización y el agregado de
-pistas pueden realizarse una sola vez, al final.
-
-La matriz completa de detección y decisiones está en
+La matriz completa y las reglas transaccionales están en
 [`WORKFLOW.md`](WORKFLOW.md).
 
-## Componentes
+## Entradas iniciales
 
-| Archivo | Responsabilidad actual |
-| --- | --- |
-| `menu.sh` | Interfaz interactiva y acceso al setup, proceso y limpieza. |
-| `setup.sh` | Creación del entorno virtual e instalación de dependencias. |
-| `process_videos.py` | Orquestación de Whisper, traducción, reanudación y archivos. |
-| `local_translate_srt.py` | Parseo/traducción de SRT y selección del backend. |
-| `tools/normalize_video_mp4/` | CLI importada para remux, conversión y pistas seleccionables mediante FFmpeg. |
-| `requirements.txt` | Dependencias Python; solo algunas versiones están fijadas. |
+- Una carpeta seleccionada por el usuario.
+- Procesamiento no recursivo.
+- Videos `.mp4` y `.mkv`.
+- SRT externos asociados de cualquier idioma.
+- Pistas de subtítulos embebidas de cualquier idioma.
+- Uno o más streams de audio, que siempre se conservan.
 
-## Contrato de archivos propuesto
+El formato de entrada no cambia la prioridad funcional. MP4 y MKV se aceptan
+porque son los contenedores habituales del usuario; otros formatos quedan para
+una evaluación posterior.
 
-Esta estructura satisface el requisito confirmado de conservar ambos
-subtítulos en carpetas separadas y proteger el video fuente:
+## Contrato de salida
+
+Antes de procesar:
 
 ```text
 carpeta/
-├── clase-01.mp4                 # fuente; también podría ser MKV
-├── sub_en/
-│   └── clase-01.en.srt
-├── sub_es/
-│   └── clase-01.es.srt
-└── output/
-    └── clase-01.subtitled.mp4   # MP4 nuevo con ambas pistas
+├── lesson-01.mp4
+├── lesson-01.en.srt
+└── lesson-01.es.srt
 ```
 
-- `sub_en/clase-01.en.srt`: transcripción original en inglés.
-- `sub_es/clase-01.es.srt`: traducción al español.
-- `output/clase-01.subtitled.mp4`: conserva el audio/video y agrega ambas
-  pistas como subtítulos opcionales compatibles con VLC.
-- Los archivos existentes no deben sobrescribirse por defecto.
-- `--force` necesita una semántica explícita: regenerar todo o solo una etapa.
-- Una etapa solo debe considerarse completa si su salida es válida, no solo
-  porque exista un archivo con el nombre esperado.
+Después de crear y verificar el resultado:
 
-## Alcance mínimo de una primera versión confiable
+```text
+carpeta/
+├── output/
+│   └── lesson-01.subtitled.mkv
+└── trash/
+    └── lesson-01/
+        ├── lesson-01.mp4
+        ├── lesson-01.en.srt
+        └── lesson-01.es.srt
+```
 
-- macOS como primera plataforma soportada y comprobada, manteniendo el núcleo
-  Python portable para validarlo luego en Linux y Windows.
-- Procesamiento no recursivo de una carpeta.
-- Entradas `.mp4` y `.mkv`; otros formatos se evaluarán después.
-- Reutilización de SRT descargados y pistas embebidas antes de ejecutar tareas
-  costosas.
-- Whisper ejecutado localmente.
-- Traducción mediante un servicio configurable, documentando que el backend
-  Google actual necesita Internet y envía el texto a un tercero.
-- Reanudación segura por video.
-- MP4 final nuevo con pistas `eng` y `spa` seleccionables y correctamente
-  nombradas en VLC; los SRT originales se conservan.
-- Errores visibles mediante mensajes y códigos de salida distintos de cero.
-- Pruebas automatizadas para el parseo SRT, la reanudación y el comando FFmpeg.
+- `output/lesson-01.subtitled.mkv` es el único resultado de consumo normal.
+- Contiene todos los streams del original y todas las pistas de subtítulos
+  válidas asociadas.
+- Audio y video mantienen sus codecs: no se comprimen ni recodifican.
+- Ninguna pista de subtítulos queda activa por defecto.
+- El original y los SRT externos incorporados se mueven automáticamente a
+  `trash/` solo después de una verificación exitosa.
+- `trash/` es una cuarentena reversible, no una papelera del sistema. El
+  programa nunca elimina definitivamente su contenido.
+- Nada dentro de `trash/` se sobrescribe. Una colisión detiene el archivado y
+  se informa de forma accionable.
+- Los archivos inválidos, ambiguos o no incorporados no se mueven.
+
+## Política de generación
+
+- Con uno o más subtítulos válidos asociados: se omite Whisper y se incorporan
+  todos.
+- Sin subtítulos externos pero con pistas embebidas válidas: se omite Whisper
+  y se conservan todas las pistas embebidas.
+- Sin ningún subtítulo válido: se genera un solo SRT en el idioma hablado.
+- Si existe un único audio o un único audio marcado como predeterminado, ese es
+  el candidato para transcripción.
+- Si hay varios audios y no puede elegirse uno con seguridad, el plan solicita
+  una decisión antes de modificar archivos.
+- No se genera una traducción adicional para completar un par de idiomas.
+
+## Preservación de streams
+
+El pipeline maneja subtítulos; no es un normalizador multimedia. Por defecto:
+
+- copia todos los streams de video;
+- copia todos los streams de audio;
+- conserva los codecs, idiomas y disposiciones de las pistas de audio;
+- conserva las pistas de subtítulos embebidas;
+- conserva capítulos, metadatos y otros streams compatibles;
+- agrega los SRT externos como nuevas pistas;
+- falla de forma segura antes que recodificar o descartar silenciosamente un
+  stream incompatible.
+
+Un archivo de 2 GB seguirá conteniendo esencialmente los mismos datos de audio
+y video. El tamaño puede variar levemente por el contenedor y los subtítulos,
+pero no por una compresión deliberada.
+
+## Etapas y responsabilidades previstas
+
+El núcleo se implementará en Python mediante módulos pequeños:
+
+1. descubrimiento y asociación de archivos;
+2. inspección de streams con FFprobe;
+3. modelos de inventario y planificación;
+4. adaptador de Whisper;
+5. construcción y ejecución de FFmpeg;
+6. verificación del resultado;
+7. publicación atómica y archivado en `trash/`;
+8. CLI y resumen del lote.
+
+Los scripts `.sh` pueden ofrecer instalación o una interfaz interactiva, pero
+no contendrán la lógica principal ni serán la única forma de ejecutar el
+programa.
+
+## Alcance mínimo de la primera versión confiable
+
+- macOS validado primero, con núcleo portable.
+- MP4 y MKV no recursivos.
+- Asociación conservadora de subtítulos por video.
+- Reutilización de todos los subtítulos válidos, externos o embebidos.
+- Whisper local únicamente como fallback.
+- MKV final con streams copiados y subtítulos seleccionables.
+- Staging, verificación y publicación segura.
+- Archivado automático y sin sobrescritura en `trash/`.
+- Reanudación segura y códigos de salida distintos de cero ante fallos.
+- Pruebas offline para el planner, FFmpeg, verificación y movimientos.
 
 ## Fuera de alcance por ahora
 
-Hasta que exista una necesidad concreta, no parece necesario agregar:
-
-- interfaz gráfica o servicio web;
-- base de datos, cuentas de usuario o servidor central;
-- procesamiento distribuido;
-- edición manual de subtítulos;
-- soporte recursivo o formatos adicionales a MP4/MKV;
-- empaquetado complejo o publicación en una tienda.
+- traducción automática obligatoria;
+- completar siempre un conjunto fijo de idiomas;
+- compresión, normalización o mejora de calidad;
+- recodificación automática por compatibilidad;
+- eliminación definitiva de originales o subtítulos;
+- salida MP4 obligatoria;
+- interfaz gráfica, servicio web o base de datos;
+- procesamiento recursivo o formatos adicionales;
+- edición manual, OCR de subtítulos gráficos o procesamiento distribuido.
 
 ## Estado técnico observado (2026-08-05)
 
-El repositorio se entiende y la separación general de responsabilidades es
-razonable para su tamaño. Sin embargo, todavía debe considerarse un prototipo:
+El repositorio se entiende, pero el código todavía implementa el flujo antiguo
+y debe considerarse un prototipo:
 
-- el flujo instalado por `setup.sh` no encuentra el ejecutable Whisper de la
-  propia `.venv` cuando se inicia desde el menú;
-- el parser SRT no traduce el último bloque de un archivo común que termina con
-  un solo salto de línea y agrega separadores extra;
-- algunos errores no llegan al código de salida y hay mensajes que imprimen
-  `{e}` o `{out_dir}` literalmente;
-- el menú y el setup dependen del directorio de trabajo actual;
-- no hay pruebas automatizadas ni CI;
-- la traducción predeterminada no es offline: usa el servicio de Google;
-- modelo, idiomas, backend y formatos están fijados en partes del código;
-- no existe todavía un preflight que asocie subtítulos y decida qué etapas
-  pueden omitirse;
-- `tools/normalize_video_mp4/normalize_video_mp4.py` ya resuelve el empaquetado
-  VLC, pero es una CLI independiente de 723 líneas, procesa un video por vez y
-  todavía no tiene pruebas ni integración con el pipeline principal.
+- Whisper instalado en `.venv` no se resuelve correctamente desde el menú;
+- el parser SRT de traducción omite o altera bloques comunes;
+- algunos fallos no llegan al código de salida y hay mensajes con variables no
+  interpoladas;
+- los scripts dependen del directorio de trabajo;
+- no existen pruebas automatizadas ni CI;
+- la traducción actual usa Google y requiere Internet;
+- no existe preflight, planner, staging, verificación ni archivado;
+- el normalizador MP4 importado es una CLI monolítica independiente y no debe
+  conectarse sin pruebas de caracterización.
 
-El orden sugerido está en [`../BACKLOG.md`](../BACKLOG.md).
+El orden de implementación actualizado está en [`../BACKLOG.md`](../BACKLOG.md).
 
 ## Decisiones confirmadas
 
-- Plataformas objetivo: macOS, Linux y Windows; macOS primero.
-- Entradas iniciales: MP4 y MKV, sin recorrer subcarpetas.
-- Salidas: `sub_en/`, `sub_es/` y `output/`.
-- Nombre representativo inicial: `video.subtitled.mp4`.
-- Los subtítulos se conservan como SRT y se agregan como pistas seleccionables.
+- El problema principal son las pistas de subtítulos seleccionables.
+- Se aceptan MP4 y MKV; el resultado principal será MKV.
+- No se recodifica ni elimina ningún stream para producir el resultado.
+- Se conservan todas las pistas de audio.
+- Se incorporan todos los subtítulos válidos asociados, cualquiera sea su
+  idioma.
+- La existencia de cualquier subtítulo válido evita Whisper.
+- Whisper genera un solo subtítulo cuando no existe ninguno.
 - Ningún subtítulo queda activo por defecto.
-- Se conservan todos los audios y se prefiere inglés como default.
-- La traducción puede utilizar Internet y debe informarlo claramente.
-- Se reutiliza cualquier subtítulo válido antes de ejecutar Whisper o traducir.
-- El original se conserva por defecto; después de verificar la salida puede
-  eliminarse mediante confirmación interactiva o `--delete-source` explícito.
-- El comportamiento debe documentarse antes de implementarse.
+- La salida se verifica antes de publicar o mover insumos.
+- El original y los sidecars incorporados se mueven automáticamente a
+  `trash/`, sin sobrescribir y sin borrado definitivo.
+- La implementación será modular; shell queda limitado a wrappers útiles.
+- El comportamiento se documenta antes de implementarse y se avanza por fases
+  pequeñas.
 
-## Decisiones pendientes
+## Decisiones que se resuelven durante el preflight
 
-Las decisiones funcionales que todavía bloquean una especificación completa se
-mantienen en [`WORKFLOW.md`](WORKFLOW.md#decisiones-pendientes). También debe
-definirse si el menú interactivo o la CLI no interactiva será la interfaz
-principal para automatización.
+No bloquean el diseño general, pero requieren una elección por video cuando la
+inspección no pueda decidir de forma segura:
+
+- qué audio transcribir si existen varios sin un predeterminado inequívoco;
+- qué idioma o asociación asignar a un SRT sin metadata o nombre suficiente;
+- cómo proceder si dos archivos de entrada competirían por la misma ruta en
+  `trash/`.
+
+La CLI debe mostrar estas ambigüedades antes de modificar archivos; nunca debe
+resolverlas por aproximación silenciosa.

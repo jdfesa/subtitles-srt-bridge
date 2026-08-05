@@ -13,27 +13,31 @@
 - Target macOS first while keeping the Python core portable to Linux and
   Windows.
 - Initial video inputs are non-recursive `.mp4` and `.mkv` files.
-- Reuse valid external or embedded subtitles before invoking Whisper or a
-  translation backend.
-- Preserve English and Spanish SRT sidecars and package them as selectable,
-  non-default VLC tracks in a new MP4.
-- Preserve all audio streams and prefer English as the default when its language
-  is known.
-- Never destroy or overwrite source media without explicit user intent and a
-  successfully verified output.
-- Source deletion defaults to off. Interactive deletion requires confirmation
-  after verification; automation requires an explicit `--delete-source` flag.
+- Reuse every valid associated external or embedded subtitle, regardless of
+  language.
+- Invoke Whisper only when no valid subtitle exists, and generate one subtitle
+  in the spoken language; do not translate merely to complete a language pair.
+- Produce a new MKV with selectable, non-default subtitle tracks.
+- Copy every source stream without compression, transcoding, silent removal, or
+  changes to audio dispositions.
+- Stage and verify the complete output before publishing it.
+- After successful verification, automatically move the original and only the
+  sidecars actually integrated into `trash/<video>/`.
+- Treat `trash/` as reversible quarantine: never empty it, permanently delete
+  its contents, or overwrite an existing path.
+- Leave ambiguous, invalid, and unused files untouched.
 
 ## Engineering constraints
 
 - Avoid monolithic modules; split by clear responsibility after protecting
   existing behavior with characterization tests.
+- Implement the agreed workflow in small, independently validated phases.
 - Keep unit tests deterministic and offline. Replace Whisper, translation
   services, FFmpeg execution, and filesystem side effects with test doubles
   where appropriate.
 - End-to-end media fixtures must be tiny and generated during tests rather than
   committed as binaries.
 - Propagate failures with non-zero exit codes and actionable messages.
-- Prefer cross-platform Python for core behavior; shell scripts may only be
-  convenience wrappers.
+- Prefer cross-platform Python for core behavior; shell scripts may be setup or
+  convenience wrappers but must not contain the only implementation.
 - Use Conventional Commits in English.

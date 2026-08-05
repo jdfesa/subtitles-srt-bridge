@@ -1,261 +1,284 @@
 # Backlog
 
-Backlog propuesto a partir de la revisión del repositorio del 2026-08-05.
-Prioriza confiabilidad del flujo actual antes de ampliar funcionalidades.
+Plan incremental actualizado a partir de la revisión del repositorio y de las
+decisiones funcionales confirmadas el 2026-08-05.
 
 ## Convenciones
 
-- **P0:** impide confiar en el flujo principal o contradice su promesa básica.
-- **P1:** necesario para una primera versión mantenible y predecible.
-- **P2:** mejora posterior; debe validarse contra una necesidad real.
-- Los ítems no representan trabajo ya implementado.
+- **P0:** necesario para confiar en el flujo principal.
+- **P1:** necesario para mantenerlo y operarlo con previsibilidad.
+- **P2:** mejora opcional; se implementa solo con una necesidad concreta.
+- Cada fase debe producir un cambio pequeño, revisable y validado antes de
+  comenzar la siguiente.
+- Los ítems marcados representan documentación terminada, no implementación.
 
-## P0 - Corregir el flujo principal
+## Fase 0 - Cerrar el contrato antes de programar
 
-### [ ] P0.1 Usar Whisper desde el entorno instalado
+### [x] P0.0 Documentar el flujo confirmado
 
-`setup.sh` instala `.venv/bin/whisper`, pero `menu.sh` ejecuta directamente
-`.venv/bin/python3` sin activar el entorno. `shutil.which("whisper")` no encuentra
-ese binario y el fallback apunta a un entorno diferente en `~/venvs/whisper`.
+Definir con precisión que el producto administra subtítulos, no normaliza ni
+traduce video de forma obligatoria.
 
-**Criterios de aceptación**
+**Decisiones documentadas**
 
-- Una instalación nueva realizada desde el menú puede procesar un video sin
-  instalar Whisper globalmente.
-- El ejecutable se resuelve desde el mismo entorno que `sys.executable` o se
-  invoca como módulo Python.
-- Si Whisper no existe, el error indica cómo reparar la instalación.
+- MP4 y MKV son entradas iniciales equivalentes para el usuario.
+- El resultado principal es un MKV nuevo.
+- Audio, video y demás streams se copian; no se comprimen ni descartan.
+- Se incorporan todos los subtítulos válidos asociados, cualquiera sea su
+  idioma.
+- Whisper se ejecuta solamente cuando no existe ningún subtítulo válido.
+- Sin subtítulos se genera uno en el idioma hablado; no se completa un par de
+  idiomas mediante traducción automática.
+- El resultado se verifica antes de publicarse.
+- Después de verificar, el original y los sidecars usados se mueven
+  automáticamente a `trash/` sin sobrescribir ni borrar definitivamente.
+- El núcleo será Python modular; shell puede actuar como wrapper.
 
-### [ ] P0.2 Sustituir o corregir el parser SRT
+**Fuente de verdad**
 
-El regex actual deja sin traducir el último bloque cuando el archivo termina
-con un único salto de línea y duplica líneas en blanco entre bloques.
+- [`docs/PROJECT.md`](docs/PROJECT.md)
+- [`docs/WORKFLOW.md`](docs/WORKFLOW.md)
 
-**Criterios de aceptación**
+## P0 - Implementar el flujo confiable por fases
 
-- Se traducen todos los bloques con o sin salto de línea final.
-- Se preservan índices, tiempos, texto multilínea y separadores válidos.
-- Hay casos automatizados para LF, CRLF, archivo sin salto final, etiquetas y
-  texto multilinea.
-- Los bloques inválidos producen un error comprensible o se conservan mediante
-  una política documentada; nunca se omiten silenciosamente.
+### [ ] P0.1 Crear la red de seguridad de pruebas
 
-### [ ] P0.3 Agregar pruebas de regresión del núcleo
-
-Crear una suite pequeña y sin acceso a red. El traductor y la ejecución de
-Whisper deben reemplazarse por dobles durante las pruebas.
-
-**Criterios de aceptación**
-
-- Cubre parseo/traducción SRT, asociación de archivos, matriz de planificación,
-  nombres de salida, reanudación, `--force`, propagación de fallos y
-  construcción del comando FFmpeg.
-- Reproduce P0.1 y P0.2 antes de sus correcciones.
-- Existe un comando único y documentado para ejecutar la suite.
-
-### [ ] P0.4 Propagar fallos y corregir mensajes
-
-`local_translate_srt.py` imprime `{e}` y `{out_dir}` literalmente en dos
-mensajes. Además, ambos flujos pueden terminar con código `0` aunque una etapa
-haya fallado, y el menú anuncia que el proceso finalizó sin distinguir éxito de
-error.
+Agregar una suite determinista y offline antes de refactorizar el prototipo o
+la utilidad FFmpeg importada.
 
 **Criterios de aceptación**
 
-- Los mensajes muestran la excepción y ruta reales.
-- El resumen distingue procesados, omitidos y fallidos.
-- Cualquier fallo no recuperado produce un código de salida distinto de cero.
-- El menú no comunica éxito cuando el comando falló.
+- Existe un único comando documentado para ejecutar la suite.
+- Whisper, FFprobe, FFmpeg y filesystem se sustituyen con dobles en unit tests.
+- Se caracterizan las funciones puras y la construcción de comandos que se
+  vayan a reutilizar.
+- Se reproducen los fallos actuales relevantes: resolución de Whisper, códigos
+  de salida ambiguos, mensajes sin interpolar y uso inseguro de archivos.
+- Los fixtures multimedia end-to-end son mínimos y se generan durante la
+  prueba; no se incorporan binarios grandes.
 
-### [ ] P0.5 Definir una política segura para archivos existentes
+### [ ] P0.2 Crear un núcleo Python modular
 
-La existencia del archivo se usa como única prueba de que una etapa terminó.
-Además, `video.srt` es tanto el nombre temporal esperado de Whisper como el
-destino final en español, lo que puede reemplazar contenido previo.
+Separar responsabilidades antes de incorporar el nuevo comportamiento, sin
+crear un framework innecesario.
 
-**Criterios de aceptación**
+**Módulos previstos**
 
-- Whisper escribe en un directorio temporal o de staging separado.
-- No se sobrescribe un SRT previo del usuario sin `--force` y una semántica
-  documentada.
-- Las escrituras finales son atómicas.
-- Antes de omitir una etapa se valida al menos que el SRT sea legible y tenga
-  bloques válidos.
-- El original se conserva por defecto.
-- La limpieza solo ocurre después de verificar el MP4 final.
-- El modo interactivo pregunta `¿Eliminar el archivo original? [s/N]`.
-- La automatización requiere `--delete-source` explícito; nunca se activa de
-  forma implícita.
-
-### [ ] P0.6 Corregir la promesa de privacidad y conectividad
-
-Whisper se ejecuta localmente, pero el backend predeterminado de traducción
-Google requiere Internet y envía el texto del subtítulo a un servicio externo.
-
-**Criterios de aceptación**
-
-- README y ayuda distinguen transcripción local de traducción remota.
-- Se documentan red, privacidad, posibles límites y credenciales por backend.
-- Se decide si una traducción completamente offline es requisito o no.
-
-### [ ] P0.7 Implementar preflight y plan condicional
-
-Inspeccionar automáticamente cada video, sus streams, los SRT asociados y un
-posible resultado previo. El plan debe omitir Whisper y traducción siempre que
-los artefactos válidos ya existan.
-
-**Criterios de aceptación**
-
-- Detecta MP4/MKV del nivel principal, pistas embebidas y SRT en la raíz,
-  `sub_en/` y `sub_es/`.
-- Asocia por nombre de forma conservadora y pregunta cuando el idioma o la
-  asociación sean ambiguos.
-- Distingue `found`, `missing`, `invalid` y `ambiguous` por idioma.
-- Muestra por video qué etapas ejecutará u omitirá antes de modificar archivos.
-- Dos SRT existentes pasan directamente a empaquetado.
-- Un solo idioma disponible aplica la política confirmada sin ejecutar etapas
-  adicionales por accidente.
-- Un resultado ya válido se omite.
-- La lógica de planificación se prueba sin Whisper, red ni FFmpeg reales.
-
-### [ ] P0.8 Integrar el MP4 final con pistas seleccionables
-
-Conectar el pipeline por lotes con la capacidad importada en
-`tools/normalize_video_mp4/`. Los SRT deben conservarse como archivos y también
-incorporarse al MP4 como pistas opcionales, no quemadas en la imagen.
-
-**Criterios de aceptación**
-
-- Cada video exitoso produce un MP4 nuevo sin reemplazar el original.
-- VLC muestra dos pistas identificadas como English (`eng`) y Spanish (`spa`).
-- Los SRT en inglés y español permanecen disponibles en sus carpetas.
-- Un MP4 compatible copia audio/video sin recomprimirlos.
-- Para MKV se copian streams compatibles y solo se convierten los necesarios
-  para producir un MP4 reproducible.
-- El fallo de FFmpeg se refleja en el resumen y código de salida del lote.
-
-## P1 - Hacer la CLI mantenible
-
-### [ ] P1.1 Hacer los scripts independientes del directorio actual
-
-Resolver la raíz desde la ubicación de cada script. Hoy `./.venv`, `./setup.sh`
-y `process_videos.py` dependen de ejecutar `menu.sh` desde la raíz del repo.
-
-### [ ] P1.2 Unificar configuración y semántica de la CLI
-
-- Definir si `--force` regenera todo o aceptar flags por etapa.
-- Exponer, si forman parte del alcance, modelo Whisper, idioma de origen,
-  idioma destino, backend y pausa entre peticiones.
-- Hacer que `--sleep` se aplique también desde `local_translate_srt.py`; hoy el
-  argumento se analiza pero no se pasa a `translate_srt`.
-- Mantener valores predeterminados simples para el caso común.
-
-### [ ] P1.3 Separar orquestación, servicios y archivos
-
-Extraer funciones pequeñas para poder probar sin procesos reales ni red:
-
-- descubrimiento de videos;
-- resolución de rutas y estado por video;
+- descubrimiento de videos y sidecars;
+- modelos de streams, inventario, plan y resultado;
+- inspección mediante FFprobe;
+- asociación y validación de SRT;
 - adaptador de Whisper;
-- adaptadores de traducción;
-- validación y escritura de SRT;
-- resumen del lote y códigos de salida.
-
-No hace falta introducir un framework ni una arquitectura de muchas capas.
-
-Antes de dividir `tools/normalize_video_mp4/normalize_video_mp4.py`, agregar
-pruebas de caracterización para sus funciones puras y la construcción del
-comando FFmpeg. Luego separar únicamente donde aporte claridad:
-
-- inspección de medios con FFprobe;
-- políticas de codecs y streams;
-- detección y metadata de subtítulos;
 - construcción y ejecución de FFmpeg;
-- interfaz CLI.
+- verificación y publicación;
+- archivado en `trash/`;
+- CLI y resumen del lote.
 
-### [ ] P1.4 Robustecer instalación y diagnóstico
+**Criterios de aceptación**
 
-- Verificar `ffmpeg`, Python compatible, Homebrew solo cuando sea necesario y
-  espacio aproximado para entorno/modelo.
-- No asumir que `brew` existe antes de invocarlo.
-- Explicar que Whisper descarga el modelo en el primer uso.
-- Ofrecer un comando `doctor` o chequeo previo equivalente.
-- Revisar si LLVM 15 sigue siendo necesario para las versiones soportadas.
+- La lógica principal no depende de `menu.sh` ni del directorio de trabajo.
+- Las dependencias externas se inyectan o aíslan detrás de adaptadores.
+- No se concentra el nuevo pipeline en un único script monolítico.
+- El prototipo existente queda protegido o reemplazado gradualmente bajo
+  pruebas.
 
-### [ ] P1.5 Definir dependencias reproducibles
+### [ ] P0.3 Implementar inventario y asociación conservadora
 
-`openai-whisper` y `deep-translator` no tienen versión fijada, aunque el README
-habla de versiones exactas.
+Construir el preflight por video sin modificar archivos.
 
-- Definir una estrategia mínima de lock o constraints.
-- Separar dependencias opcionales de LibreTranslate y DeepL, o eliminar
-  backends que no formen parte del producto.
-- Documentar las versiones de Python realmente soportadas.
+**Criterios de aceptación**
 
-### [ ] P1.6 Agregar checks automáticos
+- Descubre `.mp4` y `.mkv` de la carpeta principal, sin recursión.
+- Ignora `output/`, `trash/` y staging.
+- FFprobe inventaría todos los streams, capítulos y metadata relevantes.
+- Encuentra SRT externos y subtítulos embebidos.
+- Asocia por nombre base; nunca por similitud aproximada.
+- Permite varios subtítulos, incluso varios del mismo idioma.
+- Distingue `valid`, `invalid` y `ambiguous`.
+- Un idioma desconocido puede etiquetarse `und` sin perder un sidecar asociado
+  de forma inequívoca.
+- Ningún archivo se asigna a dos videos.
+- Las ambigüedades se detectan antes de ejecutar herramientas costosas.
 
-- Formato/lint de Python y shell.
-- Pruebas en cada cambio mediante CI, al menos en macOS si es la plataforma
-  soportada.
-- Smoke test de `--help` sin descargar modelos ni usar servicios externos.
+### [ ] P0.4 Implementar el planner y el resumen previo
 
-### [ ] P1.7 Mejorar observabilidad sin complicar la UX
+Transformar el inventario en una lista explícita de etapas por video.
 
-- Resumen final con éxitos, omitidos y fallos.
-- ETA basada solo en trabajos realmente procesados; los omitidos instantáneos
-  hoy distorsionan el promedio.
-- Mensajes consistentes y opción de salida menos verbosa para automatización.
+**Criterios de aceptación**
 
-### [ ] P1.8 Preparar portabilidad sin frenar macOS
+- Con uno o más subtítulos válidos, omite Whisper.
+- Conserva todas las pistas embebidas y agrega todos los sidecars válidos.
+- Sin subtítulos, planifica una única transcripción.
+- Selecciona el único audio o el único predeterminado; con varios candidatos
+  solicita una decisión.
+- Detecta salidas ya válidas y colisiones antes de modificar archivos.
+- Muestra `skip`, `run` y `needs-input` por etapa y video.
+- La matriz completa se prueba sin Whisper ni FFmpeg reales.
 
-- Mantener el núcleo en Python y evitar rutas o comandos exclusivos de POSIX.
-- Dejar `menu.sh` como wrapper de macOS/Linux, no como única interfaz.
-- Diseñar instalación y detección de FFmpeg por plataforma.
-- Tras estabilizar macOS, validar el contrato en Linux y Windows mediante CI y
-  pruebas de instalación limpia.
+### [ ] P0.5 Generar un subtítulo solo como fallback
+
+Corregir la resolución de Whisper y encapsular la transcripción.
+
+**Criterios de aceptación**
+
+- Usa Whisper desde el mismo entorno que `sys.executable` o informa cómo
+  reparar una instalación incompleta.
+- Nunca ejecuta Whisper si existe cualquier subtítulo válido.
+- Transcribe únicamente el stream de audio elegido por el planner.
+- Detecta o utiliza el idioma hablado y genera un solo SRT en ese idioma.
+- Escribe primero en staging y valida el SRT antes de continuar.
+- No traduce automáticamente ni requiere red.
+- Un fallo devuelve un código no exitoso y no altera insumos.
+
+### [ ] P0.6 Empaquetar en MKV copiando todos los streams
+
+Crear el resultado con FFmpeg sin recodificación ni descarte silencioso.
+
+**Criterios de aceptación**
+
+- Produce `output/<base>.subtitled.mkv` mediante staging.
+- Mapea todos los streams de la fuente.
+- Copia sin recodificar todos los videos y audios.
+- Conserva idiomas, títulos y disposiciones originales de audio.
+- Conserva subtítulos embebidos, capítulos, metadata y streams compatibles.
+- Agrega todos los SRT externos o generados como pistas separadas.
+- Asigna idioma y título cuando se conocen.
+- Marca todos los subtítulos como no predeterminados.
+- Falla antes que recodificar o descartar un stream incompatible.
+- Un video grande no se carga en memoria ni se comprime.
+- La construcción del comando tiene pruebas unitarias.
+
+### [ ] P0.7 Verificar y publicar atómicamente
+
+No aceptar una salida por mera existencia o por el código de FFmpeg.
+
+**Criterios de aceptación**
+
+- La salida temporal existe, no está vacía y puede inspeccionarse con FFprobe.
+- Cantidad y codecs de video y audio coinciden con la fuente.
+- Están presentes las pistas embebidas y externas esperadas.
+- Ningún subtítulo está marcado como predeterminado.
+- Se comprueban metadata, capítulos y duración según el contrato.
+- Solo una salida válida se mueve atómicamente a `output/`.
+- Nunca se reemplaza una salida previa sin una política explícita.
+- Un fallo conserva el original y todos los sidecars en su ubicación.
+
+### [ ] P0.8 Archivar automáticamente en `trash/`
+
+Mover los insumos consumidos únicamente después de publicar un MKV verificado.
+
+**Criterios de aceptación**
+
+- Crea `trash/<base>/` al final de la transacción.
+- Mueve el video original y solo los SRT efectivamente incorporados.
+- Un SRT generado también queda disponible en la cuarentena.
+- No mueve archivos ambiguos, inválidos o no utilizados.
+- Nunca sobrescribe rutas existentes.
+- El programa nunca elimina ni vacía `trash/`.
+- Una colisión se detecta en preflight.
+- Un fallo de archivado conserva el MKV válido, informa estado `partial` y puede
+  reanudarse sin repetir Whisper ni FFmpeg.
+
+### [ ] P0.9 Propagar fallos y resumir el lote
+
+Hacer que la CLI represente correctamente el resultado de uno o varios videos.
+
+**Criterios de aceptación**
+
+- Cada video termina como `completed`, `skipped`, `needs-input`, `partial` o
+  `failed`.
+- El resumen muestra etapas ejecutadas, omitidas y fallidas.
+- `failed` o `partial` produce código de salida distinto de cero.
+- Los mensajes muestran rutas y excepciones reales.
+- El menú nunca anuncia éxito si la CLI falló.
+
+## P1 - Operación y mantenibilidad
+
+### [ ] P1.1 Hacer scripts independientes del directorio actual
+
+- Resolver la raíz desde la ubicación del script.
+- Mantener shell como wrapper de macOS/Linux, no como núcleo obligatorio.
+- Proveer una CLI Python utilizable directamente y apta para automatización.
+
+### [ ] P1.2 Definir configuración mínima de la CLI
+
+- Ruta de entrada y modo de preflight.
+- Modelo y dispositivo de Whisper cuando se necesiten.
+- Selección de audio ante múltiples candidatos.
+- Semántica por etapa para reanudación o reemplazo.
+- Ninguna opción de fuerza puede sobrescribir silenciosamente `trash/`.
+
+### [ ] P1.3 Robustecer instalación y diagnóstico
+
+- Verificar Python, FFmpeg y FFprobe.
+- No asumir que Homebrew existe.
+- Explicar la descarga inicial del modelo Whisper.
+- Añadir un comando `doctor` o equivalente.
+- Validar primero macOS sin introducir dependencias exclusivas en el núcleo.
+
+### [ ] P1.4 Definir dependencias reproducibles
+
+- Fijar o restringir dependencias directas.
+- Documentar versiones de Python soportadas.
+- Separar dependencias del flujo principal de backends opcionales o legados.
+- Eliminar dependencias de traducción si dejan de tener un uso confirmado.
+
+### [ ] P1.5 Agregar checks automáticos
+
+- Formato y lint de Python y shell.
+- Pruebas en cada cambio mediante CI.
+- Smoke test de `--help` y `inspect` sin modelos ni red.
+- Validación nativa en macOS y luego Linux/Windows.
+
+### [ ] P1.6 Mejorar observabilidad
+
+- Mensajes consistentes y salida apta para automatización.
+- ETA basada solo en etapas costosas realmente ejecutadas.
+- Diagnóstico explícito de stream, archivo y etapa que falló.
+- Registro suficiente para auditar un resultado `partial`.
 
 ## P2 - Evaluar solo con alcance confirmado
 
-### [ ] P2.1 Optimizar traducción
+### [ ] P2.1 Ofrecer salida MP4 opcional
 
-Reutilizar el cliente de Google, agrupar texto respetando límites y aplicar
-backoff con jitter. Medir primero; la implementación actual crea un traductor y
-una petición por línea.
+Evaluar MP4 solo si aporta compatibilidad concreta. Nunca debe recodificar o
+descartar streams de forma implícita. Si la fuente no es compatible con un
+remux sin pérdida, la opción debe fallar o requerir una política separada.
 
-### [ ] P2.2 Soportar más entradas
+### [ ] P2.2 Reintroducir traducción opcional
 
-Estabilizar primero `.mp4` y `.mkv`. Evaluar después `.mov`, otros contenedores,
-selección recursiva y más idiomas solo cuando aparezcan casos reales.
+El flujo principal no completa idiomas automáticamente. Si aparece una
+necesidad real:
 
-### [ ] P2.3 Aprovechar hardware disponible
+- definir idiomas y backend mediante opciones explícitas;
+- informar red, privacidad, límites y credenciales;
+- sustituir el parser regex actual antes de utilizarlo;
+- cubrir LF, CRLF, archivo sin salto final, etiquetas y multilinea;
+- nunca traducir por el solo hecho de faltar un idioma.
 
-Permitir seleccionar modelo/dispositivo y no fijar siempre `--fp16 False` si se
-necesita rendimiento en equipos compatibles.
+### [ ] P2.3 Soportar más entradas
 
-### [ ] P2.4 Empaquetar la herramienta
+Evaluar `.mov`, otros contenedores, selección recursiva y formatos de subtítulo
+adicionales solo después de estabilizar MP4/MKV y SRT.
 
-Considerar `pyproject.toml`, un entry point y releases solo cuando el uso fuera
-del clon del repositorio lo justifique.
+### [ ] P2.4 Aprovechar hardware disponible
 
-### [ ] P2.5 Completar metadatos del proyecto
+Permitir modelo y dispositivo configurables sin fijar siempre CPU o
+`--fp16 False`. Medir antes de optimizar.
 
-Agregar licencia, política de contribución y changelog si el repositorio se va a
-distribuir o aceptar contribuciones.
+### [ ] P2.5 Empaquetar y distribuir
 
-### [ ] P2.6 Ofrecer un contenedor opcional
+Considerar `pyproject.toml`, entry point, releases, licencia, changelog y un
+contenedor opcional solo cuando el uso fuera del clon lo justifique.
 
-Después de fijar dependencias y tener CI, evaluar un Dockerfile como entorno de
-referencia Linux/CPU. No convertirlo en requisito para usuarios de macOS ni en
-sustituto de las pruebas nativas por sistema operativo y arquitectura.
+## Orden de ejecución
 
-## Orden de ejecución recomendado
-
-1. Acordar las decisiones de alcance de [`docs/PROJECT.md`](docs/PROJECT.md).
-2. Cerrar las decisiones de [`docs/WORKFLOW.md`](docs/WORKFLOW.md).
-3. Implementar P0.3 junto con las reproducciones de P0.1 y P0.2.
-4. Implementar el planner P0.7 bajo pruebas.
-5. Corregir P0.1, P0.2, P0.4 y P0.5 bajo pruebas.
-6. Integrar el empaquetado P0.8 y su verificación.
-7. Completar la documentación de red P0.6.
+1. Cerrar y revisar esta documentación. **Fase actual.**
+2. Crear pruebas de caracterización y regresión (P0.1).
+3. Crear el esqueleto modular mínimo (P0.2).
+4. Implementar preflight y planner bajo pruebas (P0.3-P0.4).
+5. Implementar Whisper como fallback (P0.5).
+6. Implementar remux MKV, verificación y publicación (P0.6-P0.7).
+7. Implementar cuarentena automática y resumen transaccional (P0.8-P0.9).
 8. Ejecutar P1 en incrementos pequeños.
-9. Repriorizar P2 solo con evidencia de uso.
+9. Repriorizar P2 solamente con evidencia de uso.

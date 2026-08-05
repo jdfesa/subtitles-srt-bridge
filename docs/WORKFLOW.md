@@ -1,177 +1,267 @@
 # Flujo funcional
 
-Este documento define cómo debe decidir la CLI qué trabajo realizar para cada
-video. Es el contrato funcional previo a la implementación.
+Este documento define cómo la CLI inspecciona, planifica, empaqueta, verifica y
+archiva cada video. Es el contrato funcional previo a la implementación.
 
-## Principio principal
+## Principios
 
-La CLI debe **reutilizar primero y generar después**.
+1. **Reutilizar antes de generar.**
+2. **Generar únicamente cuando no existe ningún subtítulo válido.**
+3. **Incorporar todos los subtítulos asociados, cualquiera sea su idioma.**
+4. **Copiar streams; no comprimir, recodificar ni descartar.**
+5. **Planificar antes de modificar archivos.**
+6. **Verificar antes de publicar y archivar.**
+7. **Mover a `trash/`; nunca eliminar ni sobrescribir.**
 
-Whisper consume tiempo y CPU; la traducción consume tiempo y red. Ninguna de
-esas etapas debe ejecutarse cuando ya existe un subtítulo válido que permite
-alcanzar el resultado solicitado.
+La CLI no pregunta hechos que pueda observar. Inspecciona archivos y streams,
+muestra el plan y pregunta solamente ante una asociación ambigua, una elección
+de audio no resoluble o una colisión de salida.
 
-La CLI no debe preguntarle al usuario hechos que puede comprobar por sí misma.
-Debe inspeccionar archivos y streams automáticamente, mostrar el plan y
-preguntar solo cuando exista ambigüedad, una elección funcional o una acción
-destructiva.
-
-## Entradas de la primera versión
+## Entradas
 
 - Una carpeta elegida por el usuario.
-- Búsqueda no recursiva.
-- Videos `.mp4` y `.mkv`.
-- Subtítulos externos `.srt` junto al video, en `sub_en/` o en `sub_es/`.
-- Pistas de subtítulos ya incorporadas al video, detectadas con FFprobe.
+- Búsqueda no recursiva de videos `.mp4` y `.mkv`.
+- SRT externos junto al video o en ubicaciones de subtítulos reconocidas.
+- Pistas de subtítulos embebidas, detectadas mediante FFprobe.
+- Uno o más streams de video y audio.
+
+Las carpetas administradas `output/` y `trash/` nunca se consideran fuentes de
+una nueva ejecución.
 
 ## Etapa 1: preflight
 
-Antes de procesar, la CLI construye un inventario por video:
+Antes de modificar archivos, la CLI construye un inventario independiente por
+video:
 
-1. Detecta el video y obtiene sus streams mediante FFprobe.
-2. Detecta pistas de audio y sus idiomas.
-3. Detecta pistas de subtítulos embebidas y sus idiomas.
-4. Busca SRT externos que puedan asociarse con seguridad al video.
-5. Valida que cada SRT encontrado tenga bloques legibles.
-6. Clasifica los subtítulos como inglés, español o idioma desconocido.
-7. Detecta si ya existe un MP4 final y valida sus pistas.
-8. Construye y muestra un plan sin modificar archivos.
+1. Detecta el contenedor y todos sus streams mediante FFprobe.
+2. Registra codec, idioma, título y disposición de cada stream.
+3. Conserva la lista completa de videos, audios, subtítulos, datos, capítulos y
+   adjuntos que deban copiarse.
+4. Busca SRT externos que puedan asociarse de forma conservadora.
+5. Valida que cada SRT tenga bloques legibles.
+6. Clasifica idioma y título cuando la metadata o el nombre lo permitan.
+7. Detecta candidatos ambiguos sin seleccionarlos silenciosamente.
+8. Busca un resultado previo y valida si ya cumple el contrato.
+9. Comprueba anticipadamente colisiones en `output/` y `trash/`.
+10. Muestra un plan sin generar, mover ni sobrescribir archivos.
 
-Ejemplo de resumen:
+Ejemplo con subtítulos existentes:
 
 ```text
-Video: lesson-01.mkv
+Video: lesson-01.mp4
 Audio: eng (default), spa
-English subtitle: found at sub_en/lesson-01.en.srt
-Spanish subtitle: missing
-Packaged output: missing
+Subtitles found:
+  - lesson-01.en.srt (eng)
+  - lesson-01.es.srt (spa)
+Output: output/lesson-01.subtitled.mkv (missing)
 
 Plan:
   [skip] Whisper
-  [run]  Translate English -> Spanish
-  [run]  Create output/lesson-01.subtitled.mp4
+  [run]  Copy every source stream and add 2 subtitle tracks
+  [run]  Verify output
+  [run]  Move source and 2 used sidecars to trash/lesson-01/
 ```
 
-## Asociación de subtítulos
+Ejemplo sin subtítulos:
 
-La asociación debe ser conservadora, especialmente cuando la carpeta contiene
-varios videos.
+```text
+Video: lesson-02.mkv
+Audio: eng (default)
+Subtitles found: none
 
-Coincidencias iniciales reconocidas para `lesson-01.mp4`:
+Plan:
+  [run]  Generate one English SRT with Whisper
+  [run]  Copy every source stream and add the generated subtitle
+  [run]  Verify output
+  [run]  Move source and generated sidecar to trash/lesson-02/
+```
 
+## Asociación de subtítulos externos
+
+La asociación se realiza por video y debe ser conservadora, especialmente en
+carpetas con varios archivos.
+
+Coincidencias reconocibles para `lesson-01.mp4` incluyen:
+
+- `lesson-01.srt`;
 - `lesson-01.en.srt`, `lesson-01.eng.srt`, `lesson-01.english.srt`;
 - `lesson-01.es.srt`, `lesson-01.spa.srt`, `lesson-01.spanish.srt`;
-- los mismos nombres dentro de `sub_en/` o `sub_es/`.
+- sufijos equivalentes de otros idiomas;
+- nombres equivalentes dentro de ubicaciones de subtítulos reconocidas.
 
 Reglas:
 
-- El nombre base del video debe coincidir con el del SRT.
-- La carpeta `sub_en/` o `sub_es/` puede resolver el idioma aunque el nombre no
-  tenga un sufijo de idioma.
-- Un archivo como `lesson-01.srt` es ambiguo si no se puede determinar su
-  idioma con seguridad; la CLI debe preguntarlo.
-- Un SRT no debe asociarse por aproximación a uno de varios videos.
-- Si aparecen dos candidatos para el mismo idioma y video, la CLI debe mostrar
-  ambos y pedir una selección.
+- el nombre base del video debe coincidir con el del SRT;
+- no se asocia por similitud aproximada;
+- todos los candidatos inequívocos se incorporan, incluso si comparten idioma;
+- un idioma desconocido no impide incorporar una asociación inequívoca: la
+  pista puede etiquetarse como `und` y conservar un título descriptivo;
+- si `lesson-01.srt` no puede distinguirse de candidatos para varios videos, la
+  CLI solicita una selección;
+- un SRT inválido se informa y no se mueve a `trash/`;
+- ningún SRT se reclama para más de un video.
 
 ## Matriz de planificación
 
-| Inglés disponible | Español disponible | Trabajo mínimo propuesto |
+| Subtítulos externos válidos | Subtítulos embebidos válidos | Trabajo mínimo |
 | --- | --- | --- |
-| Sí | Sí | Omitir Whisper y traducción; empaquetar si falta el MP4 final. |
-| Sí | No | **Pendiente:** empaquetar solo inglés o traducirlo a español antes de empaquetar. |
-| No | No | Ejecutar Whisper en inglés; traducir a español; empaquetar. |
-| No | Sí | **Pendiente:** empaquetar solo español, generar inglés con Whisper o traducir español a inglés. |
+| Uno o más | Cualquier cantidad | Omitir Whisper; conservar los embebidos y agregar todos los externos. |
+| Ninguno | Uno o más | Omitir Whisper; conservar todas las pistas embebidas. |
+| Ninguno | Ninguno | Generar un único SRT desde el audio seleccionado y agregarlo. |
 
-"Disponible" puede significar un SRT externo válido o una pista embebida cuyo
-idioma esté identificado. El tratamiento exacto de pistas embebidas se define
-en las decisiones pendientes.
+La decisión se toma por existencia de cualquier subtítulo válido, no por un par
+obligatorio inglés/español. No se traduce para completar idiomas ausentes.
 
-## Etapas independientes
+## Selección de audio para Whisper
 
-El pipeline debe modelarse como etapas idempotentes:
+Esta etapa solo existe cuando el inventario no contiene ningún subtítulo:
 
-1. `inspect`: inventariar entradas y construir el plan.
-2. `transcribe`: generar el SRT inglés solo cuando haga falta.
-3. `translate`: generar el SRT español solo cuando haga falta.
-4. `package`: producir el MP4 con las pistas disponibles.
-5. `verify`: comprobar el resultado con FFprobe.
-6. `cleanup`: actuar sobre el original únicamente bajo una política explícita.
+1. Si hay un único audio, se utiliza ese stream.
+2. Si hay varios y exactamente uno es predeterminado, se utiliza el
+   predeterminado.
+3. Si la metadata identifica de forma inequívoca el audio solicitado por el
+   usuario, se utiliza ese stream.
+4. Si quedan varios candidatos, el preflight pregunta cuál transcribir.
+5. Whisper detecta o recibe el idioma hablado y genera un solo SRT en ese mismo
+   idioma.
 
-Cada etapa debe poder omitirse sin impedir las posteriores. Por ejemplo, dos
-SRT descargados deben poder pasar directamente a `package`.
+Todos los streams de audio se conservan en el MKV final, incluido cualquiera
+que no haya sido elegido para transcripción.
 
-## Salidas confirmadas
+## Etapas idempotentes
 
-```text
-carpeta/
-├── lesson-01.mp4                # fuente; también puede ser MKV
-├── sub_en/
-│   └── lesson-01.en.srt
-├── sub_es/
-│   └── lesson-01.es.srt
-└── output/
-    └── lesson-01.subtitled.mp4
-```
+El pipeline se divide en responsabilidades pequeñas:
 
-- Los dos SRT se conservan como archivos.
-- El MP4 final contiene pistas `eng` y `spa` para VLC cuando ambos idiomas están
-  disponibles.
-- Ningún subtítulo queda seleccionado por defecto.
-- Se conservan todas las pistas de audio.
-- Si puede identificarse una pista de audio inglesa, se marca como default.
-- El empaquetado no debe quemar texto sobre el video.
-- Streams compatibles deben copiarse; solo se convierten los incompatibles con
-  el contenedor MP4.
+1. `inspect`: inventariar entradas y artefactos previos.
+2. `plan`: decidir qué etapas ejecutar y detectar ambigüedades o colisiones.
+3. `transcribe`: generar un SRT únicamente si no existe ninguno.
+4. `mux`: construir un MKV temporal copiando todos los streams.
+5. `verify`: comprobar que el resultado satisface el contrato.
+6. `publish`: mover atómicamente el resultado verificado a `output/`.
+7. `archive`: mover automáticamente los insumos consumidos a `trash/`.
 
-## Verificación del MP4 final
+Cada etapa debe poder probarse sin Whisper, FFmpeg, red ni movimientos reales
+mediante dobles y fixtures pequeños.
 
-Antes de considerar exitoso un video, la CLI debe comprobar al menos:
+## Empaquetado MKV sin recodificación
 
-- el proceso FFmpeg terminó con código `0`;
-- el MP4 de salida existe y no está vacío;
-- existe un stream de video y, si la fuente tenía audio, al menos uno de audio;
-- están presentes las pistas de subtítulos esperadas con idioma y título;
-- ninguna pista de subtítulos está marcada como default;
-- la pista inglesa de audio está marcada como default cuando fue identificada;
-- la duración es consistente con la fuente dentro de una tolerancia definida.
+El resultado se escribe primero en staging y usa MKV porque acepta de manera
+flexible múltiples streams y subtítulos.
 
-La salida se escribe primero en staging y solo se publica en `output/` después
-de superar la validación.
+El comando FFmpeg debe:
 
-## Original y limpieza
+- mapear todos los streams del original;
+- copiar sin recodificar video y audio;
+- conservar subtítulos embebidos, capítulos, metadata y otros streams
+  compatibles;
+- agregar cada SRT externo o generado como pista separada;
+- asignar idioma y título cuando se conozcan;
+- marcar todas las pistas de subtítulos como no predeterminadas;
+- fallar antes que recodificar o eliminar silenciosamente un stream.
 
-El usuario no necesita conservar el original una vez comprobado el resultado,
-pero eliminar videos es una operación destructiva. La política confirmada es:
+Remultiplexar no comprime el video. El tamaño puede cambiar levemente por la
+estructura del contenedor, pero los payloads de audio y video mantienen sus
+codecs y calidad.
 
-- el comportamiento predeterminado conserva el original;
-- nunca se elimina un original si el empaquetado o la verificación fallan;
-- cualquier limpieza ocurre después de publicar el resultado válido;
-- en modo interactivo se pregunta `¿Eliminar el archivo original? [s/N]`
-  únicamente después de una verificación exitosa;
-- responder Enter o `N` conserva el original;
-- para automatización puede utilizarse `--delete-source` de forma explícita;
-- `--delete-source` nunca está activo implícitamente y tampoco evita la
-  verificación previa;
-- si la eliminación falla, el MP4 final permanece válido y el comando informa
-  el problema con un código de salida no exitoso o un estado parcial claramente
-  distinguible.
+## Verificación
+
+Antes de considerar exitoso un video, la CLI comprueba al menos:
+
+- FFmpeg terminó con código `0`;
+- el MKV temporal existe y no está vacío;
+- todos los streams de video del original están presentes;
+- todos los streams de audio del original están presentes;
+- los codecs de video y audio coinciden con los del original;
+- idiomas y disposiciones de audio coinciden con los del original;
+- todas las pistas embebidas que debían preservarse están presentes;
+- cada subtítulo externo incorporado aparece como una pista diferenciada;
+- idioma y título coinciden cuando eran conocidos;
+- ninguna pista de subtítulos está marcada como predeterminada;
+- capítulos y metadata requeridos se conservaron;
+- la duración coincide con la fuente dentro de una tolerancia documentada;
+- el archivo puede abrirse nuevamente con FFprobe.
+
+Solo un resultado que supere estas comprobaciones puede publicarse.
+
+## Publicación y `trash/`
+
+Después de verificar:
+
+1. El MKV de staging se publica atómicamente como
+   `output/<base>.subtitled.mkv`.
+2. Se crea `trash/<base>/` sin reemplazar contenido existente.
+3. Se mueve automáticamente el video original.
+4. Se mueven únicamente los SRT externos o generados que fueron incorporados.
+5. Se deja intacto cualquier archivo ambiguo, inválido o no utilizado.
+
+`trash/` es una zona de cuarentena administrada por el proyecto:
+
+- el movimiento es automático porque es reversible;
+- el programa nunca vacía `trash/` ni elimina definitivamente archivos;
+- el usuario revisa y elimina manualmente su contenido cuando lo considere;
+- ninguna ruta existente se sobrescribe;
+- una colisión o fallo de movimiento se informa como resultado parcial;
+- el MKV verificado permanece válido si el archivado falla;
+- jamás se mueve un insumo antes de publicar una salida verificada.
+
+Las pistas embebidas no tienen sidecar que mover: permanecen dentro del original
+archivado y del MKV final.
+
+## Archivos existentes y reanudación
+
+- Una salida existente no se acepta solo por su nombre: debe verificarse.
+- El staging usa nombres exclusivos y nunca reemplaza el original.
+- Sin una opción explícita de reemplazo, una salida o destino de `trash/`
+  existente se considera una colisión.
+- Un fallo antes de verificar conserva todos los insumos en su ubicación.
+- Un fallo de archivado posterior a la publicación se reporta como parcial y
+  debe poder reanudarse sin volver a ejecutar Whisper o FFmpeg.
+- La semántica de cualquier futuro `--force` debe definirse por etapa; nunca
+  habilita sobrescrituras silenciosas dentro de `trash/`.
+
+## Errores y resumen del lote
+
+Cada video termina en uno de estos estados:
+
+- `completed`: salida verificada e insumos archivados;
+- `skipped`: ya estaba completo y verificado;
+- `needs-input`: existe una ambigüedad que requiere decisión;
+- `partial`: salida válida publicada, pero archivado incompleto;
+- `failed`: no pudo producirse o verificarse la salida.
+
+El resumen distingue estos estados. Cualquier `failed` o `partial` produce un
+código de salida distinto de cero y un mensaje accionable.
 
 ## Red y privacidad
 
-- Whisper transcribe localmente y utiliza CPU/GPU del equipo.
-- La traducción predeterminada puede utilizar Google mediante
-  `deep-translator` y, por tanto, requiere Internet y envía el texto a un
-  servicio externo.
-- El proyecto no se limita a traducción offline: resolver bien el problema y
-  mantener calidad de traducción tiene prioridad.
-- La CLI debe informar qué backend usará antes de enviar texto.
+- Whisper se ejecuta localmente y utiliza CPU/GPU del equipo.
+- El flujo principal confirmado no necesita traducción remota.
+- El prototipo actual todavía contiene un backend de Google mediante
+  `deep-translator`; no forma parte del camino objetivo mínimo.
+- Si en el futuro se agrega traducción opcional, deberá informar antes de usar
+  red o enviar texto a terceros.
 
-## Decisiones pendientes
+## Decisiones confirmadas
 
-1. Cuando existe un solo idioma, ¿se empaqueta únicamente el subtítulo
-   disponible o la CLI debe intentar completar siempre inglés y español?
-   Si debe completarlos: con solo inglés se puede traducir a español; con solo
-   español falta decidir entre Whisper sobre el audio o traducción inversa.
-2. Si el video ya contiene una pista embebida válida, ¿debe extraerse además a
-   `sub_en/` o `sub_es/` para cumplir el contrato de conservar ambos SRT?
+- MP4 y MKV son entradas equivalentes para el usuario.
+- MKV es la salida principal por su flexibilidad de streams.
+- No se recodifica ni descarta contenido del original.
+- Todos los audios se conservan.
+- Todos los subtítulos válidos se incorporan como pistas seleccionables.
+- La presencia de cualquier subtítulo evita la generación.
+- Sin subtítulos se genera uno solo en el idioma hablado.
+- No existe traducción automática obligatoria.
+- Ningún subtítulo queda seleccionado por defecto.
+- El original y los sidecars usados se mueven automáticamente a `trash/` solo
+  después de publicar un resultado verificado.
+- `trash/` nunca se vacía ni se sobrescribe desde el programa.
+
+## Ambigüedades que requieren interacción
+
+- varios audios sin un candidato inequívoco para Whisper;
+- un SRT que podría pertenecer a más de un video;
+- una ruta de salida o de `trash/` ya ocupada;
+- metadata contradictoria entre nombre, carpeta y stream.
+
+Estas condiciones se detectan durante el preflight. No deben descubrirse
+después de iniciar Whisper, FFmpeg o movimientos.
