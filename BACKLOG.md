@@ -41,7 +41,7 @@ traduce video de forma obligatoria.
 
 ## P0 - Implementar el flujo confiable por fases
 
-### [ ] P0.1 Crear la red de seguridad de pruebas
+### [x] P0.1 Crear la red de seguridad de pruebas
 
 Agregar una suite determinista y offline antes de refactorizar el prototipo o
 la utilidad FFmpeg importada.
@@ -56,6 +56,13 @@ la utilidad FFmpeg importada.
   de salida ambiguos, mensajes sin interpolar y uso inseguro de archivos.
 - Los fixtures multimedia end-to-end son mínimos y se generan durante la
   prueba; no se incorporan binarios grandes.
+
+**Resultado inicial**
+
+- 29 pruebas offline con `unittest`.
+- 12 `expectedFailure` documentan defectos reproducidos del prototipo sin
+  ocultarlos ni impedir que la red de seguridad se ejecute.
+- No se modificó comportamiento productivo en esta fase.
 
 ### [ ] P0.2 Crear un núcleo Python modular
 

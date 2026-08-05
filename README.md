@@ -76,6 +76,25 @@ usarse todavía para confiarle el movimiento de archivos importantes.
 La implementación avanzará en fases pequeñas: pruebas, núcleo modular,
 preflight, generación condicional, remux, verificación y cuarentena.
 
+## Pruebas
+
+La red de seguridad inicial usa únicamente la biblioteca estándar de Python y
+no ejecuta Whisper, FFmpeg, FFprobe ni servicios de red reales.
+
+Desde la raíz del repositorio:
+
+```bash
+python3 -m unittest discover -s tests -v
+```
+
+Los casos mostrados como `expected failure` son reproducciones ejecutables de
+defectos conocidos del prototipo. Permanecen visibles hasta que la fase que
+reemplace o corrija ese comportamiento convierta cada caso en una prueba
+normal. Un `unexpected success` hace fallar la suite para evitar mantener una
+marca obsoleta.
+
+El inventario de esas reproducciones está en [`tests/README.md`](tests/README.md).
+
 ## Requisitos previstos
 
 - Python 3.10 o posterior;
@@ -102,5 +121,7 @@ CLI estarán implementadas en Python.
 - [`docs/WORKFLOW.md`](docs/WORKFLOW.md): preflight, matriz y transacción por
   video.
 - [`BACKLOG.md`](BACKLOG.md): fases, orden y criterios de aceptación.
+- [`tests/README.md`](tests/README.md): alcance de la red de seguridad y fallos
+  conocidos reproducidos.
 
 Las decisiones de producto se documentan antes de cambiar comportamiento.
