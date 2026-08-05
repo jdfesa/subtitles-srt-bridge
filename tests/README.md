@@ -22,6 +22,9 @@ python3 -m unittest discover -s tests -v
   externos.
 - Discovery, FFprobe y validación SRT se prueban con JSON controlado, sidecars
   temporales y asociaciones ambiguas sin modificar medios reales.
+- El planner y su resumen se prueban con inventarios inmutables, elecciones de
+  audio, salidas verificadas simuladas y colisiones en directorios temporales;
+  no ejecutan ninguna etapa productiva.
 
 ## Defectos reproducidos
 

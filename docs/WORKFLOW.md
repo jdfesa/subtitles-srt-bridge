@@ -124,6 +124,41 @@ tampoco se incorpora silenciosamente.
 P0.3 es completamente read-only: no crea `output/`, `trash/` ni staging; no
 renombra, mueve o reescribe SRT; y no ejecuta Whisper o FFmpeg.
 
+## Semántica del planner P0.4
+
+El planner consume el resultado de discovery y produce decisiones para
+`transcribe`, `mux`, `verify`, `publish` y `archive`. No ejecuta ninguna de esas
+etapas ni modifica el filesystem. Cada decisión es `skip`, `run` o
+`needs-input` y contiene una razón apta para mostrar al usuario.
+
+Las reglas de bloqueo son conservadoras:
+
+- un SRT inválido queda excluido, pero no bloquea; si no existe ningún
+  subtítulo válido, se planifica la transcripción;
+- un SRT ambiguo bloquea todos los videos candidatos antes de ejecutar trabajo
+  costoso;
+- una incidencia no asociada o una inspección fallida permanece visible y hace
+  que el lote completo requiera atención;
+- si falta una selección inequívoca de audio, el video completo queda en
+  `needs-input`;
+- cualquier decisión `needs-input` hace que el plan no sea ejecutable.
+
+La mera existencia de `output/<base>.subtitled.mkv` nunca demuestra que la
+salida sea válida. Una salida existente sin una verificación explícita es una
+colisión. Cuando un llamador entrega una salida ya verificada, el planner omite
+`transcribe`, `mux`, `verify` y `publish`, y conserva únicamente el archivado
+pendiente para permitir una reanudación segura.
+
+Un destino `trash/<base>/` existente también es una colisión y se detecta antes
+de Whisper o FFmpeg. Si dos videos del mismo lote derivan la misma salida o el
+mismo destino de cuarentena, ambos quedan en `needs-input`. La comparación de
+destinos ignora mayúsculas para proteger primero los filesystems habituales de
+macOS, donde nombres que difieren solo por capitalización suelen colisionar.
+
+P0.4 solo representa estas decisiones y genera el resumen previo. La
+verificación concreta de una salida, la ejecución de etapas y la resolución
+interactiva de elecciones pertenecen a fases posteriores.
+
 ## Matriz de planificación
 
 | Subtítulos externos válidos | Subtítulos embebidos válidos | Trabajo mínimo |

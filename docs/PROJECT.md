@@ -225,8 +225,8 @@ y debe considerarse un prototipo:
 - existe una red de seguridad offline y un núcleo modular inicial, pero todavía
   no hay CI;
 - la traducción actual usa Google y requiere Internet;
-- existe inventario read-only en el núcleo, pero todavía no hay planner, CLI
-  nueva, staging, verificación ni archivado;
+- existen inventario, planner y resumen previo read-only en el núcleo, pero
+  todavía no hay CLI nueva, staging, verificación ni archivado;
 - el normalizador MP4 importado es una CLI monolítica independiente y no debe
   conectarse sin pruebas de caracterización.
 

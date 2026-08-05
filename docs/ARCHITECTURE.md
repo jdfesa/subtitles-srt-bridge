@@ -98,10 +98,34 @@ estado observado.
 La implementación no crea directorios ni modifica insumos. Planner, generación,
 mux, verificación y archivado continúan fuera de P0.3.
 
+## Extensión P0.4: planificación y resumen
+
+P0.4 agrega tres componentes puros sobre los inventarios existentes:
+
+| Módulo | Responsabilidad |
+| --- | --- |
+| `planner.py` | Aplicar la matriz por video y resolver el audio inequívoco. |
+| `batch_planner.py` | Propagar incidencias y detectar colisiones entre destinos del lote. |
+| `summary.py` | Convertir planes e incidencias en un resumen previo determinista. |
+
+El planner recibe `DiscoveryResult`, política de rutas y elecciones explícitas.
+No consulta Whisper, FFmpeg ni backends de traducción, y no crea, renombra o
+mueve archivos. Discovery aporta la existencia de destinos administrados; una
+salida solo se considera válida cuando el llamador la marca como verificada.
+Así se mantiene separado el razonamiento read-only de la verificación real que
+se implementará en P0.7.
+
+`BatchPlan` conserva todos los planes por video y las incidencias globales. Un
+plan con cualquier decisión `needs-input`, o un lote con incidencias de
+discovery sin resolver, no es ejecutable. Esta propiedad será la barrera que
+las futuras capas de aplicación deberán comprobar antes de iniciar etapas con
+efectos.
+
 ## Pruebas
 
-Los modelos, rutas y puertos se prueban con `unittest`, directorios temporales y
-adaptadores falsos. La suite completa continúa ejecutándose con:
+Los modelos, rutas, puertos, discovery y planner se prueban con `unittest`,
+directorios temporales y adaptadores falsos. La suite completa continúa
+ejecutándose con:
 
 ```bash
 python3 -m unittest discover -s tests -v

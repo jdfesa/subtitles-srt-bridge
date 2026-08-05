@@ -131,7 +131,7 @@ Construir el preflight por video sin modificar archivos.
   defectos legados como `expectedFailure`.
 - Ninguna operación de P0.3 crea, modifica, renombra o mueve archivos.
 
-### [ ] P0.4 Implementar el planner y el resumen previo
+### [x] P0.4 Implementar el planner y el resumen previo
 
 Transformar el inventario en una lista explícita de etapas por video.
 
@@ -145,6 +145,22 @@ Transformar el inventario en una lista explícita de etapas por video.
 - Detecta salidas ya válidas y colisiones antes de modificar archivos.
 - Muestra `skip`, `run` y `needs-input` por etapa y video.
 - La matriz completa se prueba sin Whisper ni FFmpeg reales.
+
+**Resultado**
+
+- Planner puro por video y lote para `transcribe`, `mux`, `verify`, `publish` y
+  `archive`.
+- Selección automática del único audio o del único predeterminado, con
+  elecciones explícitas y bloqueos accionables para los demás casos.
+- Conservación explícita de todos los subtítulos válidos y generación prevista
+  solamente cuando no existe ninguno.
+- Colisiones de salida, `trash/` y destinos compartidos detectadas antes de
+  cualquier etapa costosa; una salida solo se reutiliza si el llamador la marca
+  como verificada.
+- Resumen determinista por lote y video con `skip`, `run` y `needs-input`.
+- 12 pruebas nuevas; la suite completa ejecuta 94 casos y mantiene los 12
+  defectos legados como `expectedFailure`.
+- P0.4 no ejecuta Whisper, FFmpeg, publicación ni movimientos.
 
 ### [ ] P0.5 Generar un subtítulo solo como fallback
 
@@ -304,11 +320,11 @@ contenedor opcional solo cuando el uso fuera del clon lo justifique.
 
 ## Orden de ejecución
 
-1. Cerrar y revisar esta documentación. **Fase actual.**
-2. Crear pruebas de caracterización y regresión (P0.1).
-3. Crear el esqueleto modular mínimo (P0.2).
-4. Implementar preflight y planner bajo pruebas (P0.3-P0.4).
-5. Implementar Whisper como fallback (P0.5).
+1. Cerrar y revisar esta documentación. **Completado.**
+2. Crear pruebas de caracterización y regresión (P0.1). **Completado.**
+3. Crear el esqueleto modular mínimo (P0.2). **Completado.**
+4. Implementar preflight y planner bajo pruebas (P0.3-P0.4). **Completado.**
+5. Implementar Whisper como fallback (P0.5). **Siguiente fase.**
 6. Implementar remux MKV, verificación y publicación (P0.6-P0.7).
 7. Implementar cuarentena automática y resumen transaccional (P0.8-P0.9).
 8. Ejecutar P1 en incrementos pequeños.
