@@ -28,6 +28,17 @@ de audio no resoluble o una colisión de salida.
 Las carpetas administradas `output/` y `trash/` nunca se consideran fuentes de
 una nueva ejecución.
 
+Las ubicaciones externas reconocidas son:
+
+- el nivel principal de la carpeta de entrada;
+- un nivel dentro de `sub/`, `subs/` o `subtitles/`;
+- un nivel dentro de carpetas `sub_<idioma>`, por ejemplo `sub_en/`, `sub_es/`
+  o `sub_por/`.
+
+No se recorren otras carpetas ni niveles adicionales. Una carpeta
+`sub_<idioma>` aporta metadata de idioma, pero nunca reemplaza la asociación
+obligatoria por nombre base.
+
 ## Etapa 1: preflight
 
 Antes de modificar archivos, la CLI construye un inventario independiente por
@@ -92,6 +103,10 @@ Coincidencias reconocibles para `lesson-01.mp4` incluyen:
 Reglas:
 
 - el nombre base del video debe coincidir con el del SRT;
+- también se aceptan sufijos separados por `.`, `_` o `-`, por ejemplo
+  `lesson-01.en.srt`, `lesson-01_forced.srt` o `lesson-01-commentary.srt`;
+- el primer token del sufijo debe ser un idioma o calificador reconocido; un
+  sufijo numérico o arbitrario no se adivina como metadata;
 - no se asocia por similitud aproximada;
 - todos los candidatos inequívocos se incorporan, incluso si comparten idioma;
 - un idioma desconocido no impide incorporar una asociación inequívoca: la
@@ -100,6 +115,14 @@ Reglas:
   CLI solicita una selección;
 - un SRT inválido se informa y no se mueve a `trash/`;
 - ningún SRT se reclama para más de un video.
+
+Si un nombre puede corresponder a varios videos —por ejemplo `lesson.en.srt`
+cuando existen `lesson.mp4` y `lesson.en.mkv`— se registra como ambiguo y no se
+incluye en ningún inventario. Un SRT sin candidatos queda como no asociado y
+tampoco se incorpora silenciosamente.
+
+P0.3 es completamente read-only: no crea `output/`, `trash/` ni staging; no
+renombra, mueve o reescribe SRT; y no ejecuta Whisper o FFmpeg.
 
 ## Matriz de planificación
 

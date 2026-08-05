@@ -20,6 +20,8 @@ python3 -m unittest discover -s tests -v
 - No se modifican archivos de producción ni medios reales.
 - Los modelos, rutas y puertos del núcleo nuevo se prueban sin adaptadores
   externos.
+- Discovery, FFprobe y validación SRT se prueban con JSON controlado, sidecars
+  temporales y asociaciones ambiguas sin modificar medios reales.
 
 ## Defectos reproducidos
 

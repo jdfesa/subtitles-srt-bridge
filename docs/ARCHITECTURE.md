@@ -78,6 +78,26 @@ P0.2. El paquete nuevo no los importa. Sus pruebas de caracterización continúa
 protegiendo el comportamiento conocido mientras las siguientes fases extraen o
 reemplazan responsabilidades gradualmente.
 
+## Extensión P0.3: inventario read-only
+
+P0.3 agrega componentes concretos detrás de los límites del núcleo:
+
+| Módulo | Responsabilidad |
+| --- | --- |
+| `languages.py` | Normalización conservadora de metadata conocida. |
+| `srt.py` | Decodificación y validación estructural de SRT sin reescribirlos. |
+| `adapters/ffprobe.py` | Ejecución inyectable de FFprobe y mapeo JSON a modelos. |
+| `discovery.py` | Videos, sidecars, asociación exacta e inventario por workspace. |
+
+El servicio de discovery recibe los puertos de inspección y validación. Devuelve
+inventarios e incidencias; no decide qué etapas ejecutar. Los SRT ambiguos o no
+asociados quedan fuera de todos los inventarios, mientras que un SRT inválido
+con asociación inequívoca permanece registrado como `invalid` para explicar el
+estado observado.
+
+La implementación no crea directorios ni modifica insumos. Planner, generación,
+mux, verificación y archivado continúan fuera de P0.3.
+
 ## Pruebas
 
 Los modelos, rutas y puertos se prueban con `unittest`, directorios temporales y

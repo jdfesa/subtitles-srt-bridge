@@ -99,7 +99,7 @@ crear un framework innecesario.
   conserva los 12 defectos legados como `expectedFailure`.
 - Los scripts productivos existentes permanecen sin cambios.
 
-### [ ] P0.3 Implementar inventario y asociación conservadora
+### [x] P0.3 Implementar inventario y asociación conservadora
 
 Construir el preflight por video sin modificar archivos.
 
@@ -116,6 +116,20 @@ Construir el preflight por video sin modificar archivos.
   de forma inequívoca.
 - Ningún archivo se asigna a dos videos.
 - Las ambigüedades se detectan antes de ejecutar herramientas costosas.
+
+**Resultado**
+
+- Discovery read-only de MP4/MKV del nivel principal y SRT de ubicaciones
+  reconocidas.
+- Adaptador FFprobe inyectable que conserva streams, disposiciones, metadata,
+  propiedades escalares, capítulos, formato y duración.
+- Validador SRT para LF, CRLF, UTF-8/BOM, UTF-16, CP1252, texto multilínea y
+  errores estructurales accionables.
+- Asociación exacta con ambigüedades, metadata contradictoria y archivos no
+  asociados representados sin adivinanzas.
+- 32 pruebas nuevas; la suite completa ejecuta 82 casos y mantiene los 12
+  defectos legados como `expectedFailure`.
+- Ninguna operación de P0.3 crea, modifica, renombra o mueve archivos.
 
 ### [ ] P0.4 Implementar el planner y el resumen previo
 
