@@ -8,18 +8,20 @@ Utiliza **OpenAI Whisper** para la transcripción local y **Deep Translator** (G
 ## 🚀 Características
 *   **Generación Automática**: Crea subtítulos en inglés (`.srt`) a partir de archivos de video (`.mp4`) usando Whisper.
 *   **Traducción Automatizada**: Traduce los subtítulos al español preservando los tiempos exactos.
+*   **Reutilización Antes de Generación**: El flujo objetivo detecta subtítulos descargados o embebidos y evita Whisper o traducción cuando no hacen falta.
 *   **Organización Inteligente**:
     *   Subtítulos en **Español** (`.srt`) -> Se guardan junto al video (para reproducción directa).
     *   Subtítulos en **Inglés** (`.en.srt`) -> Se mueven ordenadamente a una subcarpeta `sub_en/`.
 *   **Resume Inteligente**: Si se interrumpe el proceso, detecta los subtítulos ya generados y continúa desde donde se quedó.
 *   **Estimación de Tiempo**: Muestra una barra de progreso y tiempo estimado (ETA) para grandes lotes de videos.
+*   **Objetivo VLC**: El alcance incluye producir un MP4 nuevo con pistas de subtítulos en inglés y español seleccionables, sin quemarlas en la imagen. Esta etapa todavía no está conectada al flujo principal.
 
 ---
 
 ## 📋 Requisitos Previos
 
 ### Sistema Operativo
-*   **Probado y optimizado para macOS** (Sonoma/Sequioa con Python 3.12).
+*   **Probado y optimizado para macOS** (Sonoma/Sequoia con Python 3.12).
 *   *Debería funcionar en Linux/Windows*, pero el script de instalación automática (`setup.sh`) contiene optimizaciones específicas para Mac (Homebrew/LLVM).
 
 ### Dependencias del Sistema
@@ -63,7 +65,7 @@ Abre tu terminal en la carpeta del proyecto y ejecuta:
 ### Error: `Failed building wheel for llvmlite`
 Este fue el desafío principal durante el desarrollo en macOS con Python 3.12.
 *   **Causa**: `llvmlite` necesita una versión específica de LLVM para compilarse, y las versiones más nuevas de Python entran en conflicto con las librerías del sistema por defecto.
-*   **Solución**: El script `setup.sh` ahora maneja esto automáticamente instalando `llvm@15` via Homebrew y configurando las variables de entorno `LLVM_CONFIG` y `CMAKE_PREFIX_PATH` antes de instalar Python. **No deberías necesitar hacer nada manual.**
+*   **Solución**: El script `setup.sh` ahora maneja esto automáticamente instalando `llvm@15` vía Homebrew y configurando las variables de entorno `LLVM_CONFIG` y `CMAKE_PREFIX_PATH` antes de instalar Python. **No deberías necesitar hacer nada manual.**
 
 ### Error: `Directory does not exist` al arrastrar carpetas
 *   **Causa**: Al arrastrar carpetas al terminal en macOS, se agregan barras invertidas (`\`) para escapar espacios.
@@ -78,13 +80,16 @@ Este fue el desafío principal durante el desarrollo en macOS con Python 3.12.
 *   `process_videos.py`: El cerebro de la operación. Contiene la lógica de Whisper, traducción y gestión de archivos.
 *   `local_translate_srt.py`: Módulo auxiliar para la traducción de bloques de texto SRT.
 *   `requirements.txt`: Lista de dependencias; fija las versiones de NumPy, llvmlite y Numba, pero no todas las dependencias transitivas.
+*   `tools/normalize_video_mp4/`: Utilidad incorporada para convertir o remultiplexar videos y agregar subtítulos seleccionables mediante FFmpeg; se integrará al pipeline después de cubrirla con pruebas.
 
 ## 🧭 Estado y próximos pasos
 
 El proyecto está en etapa de prototipo. La revisión técnica, el alcance
 propuesto y las decisiones abiertas están en
 [`docs/PROJECT.md`](docs/PROJECT.md). Las mejoras priorizadas y sus criterios de
-aceptación están en [`BACKLOG.md`](BACKLOG.md).
+aceptación están en [`BACKLOG.md`](BACKLOG.md). La matriz que determina cuándo
+reutilizar, transcribir, traducir o empaquetar está en
+[`docs/WORKFLOW.md`](docs/WORKFLOW.md).
 
 ---
 
