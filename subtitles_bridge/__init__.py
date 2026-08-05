@@ -2,6 +2,11 @@
 
 from .models import (
     ArtifactState,
+    DiscoveryIssue,
+    DiscoveryIssueKind,
+    DiscoveryResult,
+    MediaChapter,
+    MediaInspection,
     MediaStream,
     PipelineStage,
     PlanDecision,
@@ -10,6 +15,7 @@ from .models import (
     StreamKind,
     SubtitleArtifact,
     SubtitleOrigin,
+    SubtitleValidation,
     VideoInventory,
     VideoPlan,
     VideoResult,
@@ -18,6 +24,11 @@ from .paths import WorkspacePaths
 
 __all__ = [
     "ArtifactState",
+    "DiscoveryIssue",
+    "DiscoveryIssueKind",
+    "DiscoveryResult",
+    "MediaChapter",
+    "MediaInspection",
     "MediaStream",
     "PipelineStage",
     "PlanDecision",
@@ -26,6 +37,7 @@ __all__ = [
     "StreamKind",
     "SubtitleArtifact",
     "SubtitleOrigin",
+    "SubtitleValidation",
     "VideoInventory",
     "VideoPlan",
     "VideoResult",

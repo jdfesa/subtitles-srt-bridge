@@ -4,6 +4,10 @@ import unittest
 
 from subtitles_bridge.models import (
     ArtifactState,
+    DiscoveryIssue,
+    DiscoveryIssueKind,
+    DiscoveryResult,
+    MediaInspection,
     MediaStream,
     PipelineStage,
     PlanDecision,
@@ -12,6 +16,7 @@ from subtitles_bridge.models import (
     StreamKind,
     SubtitleArtifact,
     SubtitleOrigin,
+    SubtitleValidation,
     VideoInventory,
     VideoPlan,
     VideoResult,
@@ -42,6 +47,17 @@ class SubtitleArtifactTests(unittest.TestCase):
             SubtitleArtifact(
                 origin=SubtitleOrigin.EXTERNAL,
                 state=ArtifactState.VALID,
+            )
+
+    def test_validation_state_must_match_artifact_state(self):
+        validation = SubtitleValidation(True, 1, "utf-8")
+
+        with self.assertRaisesRegex(ValueError, "must match"):
+            SubtitleArtifact(
+                origin=SubtitleOrigin.EXTERNAL,
+                state=ArtifactState.INVALID,
+                path=Path("lesson.srt"),
+                validation=validation,
             )
 
     def test_generated_subtitle_cannot_reference_a_stream(self):
@@ -118,6 +134,16 @@ class VideoInventoryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unique"):
             VideoInventory(Path("lesson.mkv"), streams)
 
+    def test_media_inspection_rejects_duplicate_indices_and_negative_duration(self):
+        duplicate_streams = (
+            MediaStream(0, StreamKind.VIDEO, "h264"),
+            MediaStream(0, StreamKind.AUDIO, "aac"),
+        )
+        with self.assertRaisesRegex(ValueError, "unique"):
+            MediaInspection(duplicate_streams)
+        with self.assertRaisesRegex(ValueError, "duration"):
+            MediaInspection((), duration_seconds=-1)
+
 
 class VideoPlanTests(unittest.TestCase):
     def setUp(self):
@@ -170,6 +196,21 @@ class VideoResultTests(unittest.TestCase):
 
         self.assertEqual(result.status.value, "partial")
         self.assertIsNotNone(result.output_path)
+
+
+class DiscoveryResultTests(unittest.TestCase):
+    def test_finds_inventory_by_resolved_source(self):
+        inventory = VideoInventory(Path("lesson.mkv"))
+        issue = DiscoveryIssue(
+            DiscoveryIssueKind.UNASSOCIATED_SUBTITLE,
+            Path("orphan.srt"),
+            "No matching video",
+        )
+        result = DiscoveryResult((inventory,), (issue,))
+
+        self.assertIs(result.inventory_for(Path("lesson.mkv")), inventory)
+        with self.assertRaises(KeyError):
+            result.inventory_for(Path("other.mkv"))
 
 
 if __name__ == "__main__":

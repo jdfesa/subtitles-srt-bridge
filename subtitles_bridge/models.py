@@ -52,6 +52,12 @@ class ResultStatus(str, Enum):
     FAILED = "failed"
 
 
+class DiscoveryIssueKind(str, Enum):
+    AMBIGUOUS_SUBTITLE = "ambiguous-subtitle"
+    UNASSOCIATED_SUBTITLE = "unassociated-subtitle"
+    INSPECTION_FAILED = "inspection-failed"
+
+
 @dataclass(frozen=True, slots=True)
 class MediaStream:
     index: int
@@ -60,6 +66,9 @@ class MediaStream:
     language: str = "und"
     title: str | None = None
     is_default: bool = False
+    dispositions: frozenset[str] = frozenset()
+    metadata: tuple[tuple[str, str], ...] = ()
+    properties: tuple[tuple[str, str], ...] = ()
 
     def __post_init__(self) -> None:
         if self.index < 0:
@@ -71,6 +80,57 @@ class MediaStream:
 
 
 @dataclass(frozen=True, slots=True)
+class MediaChapter:
+    index: int
+    start_seconds: float
+    end_seconds: float
+    title: str | None = None
+    metadata: tuple[tuple[str, str], ...] = ()
+
+    def __post_init__(self) -> None:
+        if self.index < 0:
+            raise ValueError("Chapter index cannot be negative")
+        if self.start_seconds < 0:
+            raise ValueError("Chapter start cannot be negative")
+        if self.end_seconds < self.start_seconds:
+            raise ValueError("Chapter end cannot precede its start")
+
+
+@dataclass(frozen=True, slots=True)
+class MediaInspection:
+    streams: tuple[MediaStream, ...]
+    format_name: str | None = None
+    duration_seconds: float | None = None
+    chapters: tuple[MediaChapter, ...] = ()
+    metadata: tuple[tuple[str, str], ...] = ()
+
+    def __post_init__(self) -> None:
+        indices = [stream.index for stream in self.streams]
+        if len(indices) != len(set(indices)):
+            raise ValueError("Stream indices must be unique within an inspection")
+        if self.duration_seconds is not None and self.duration_seconds < 0:
+            raise ValueError("Media duration cannot be negative")
+
+
+@dataclass(frozen=True, slots=True)
+class SubtitleValidation:
+    is_valid: bool
+    cue_count: int
+    encoding: str | None = None
+    error: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.cue_count < 0:
+            raise ValueError("Subtitle cue count cannot be negative")
+        if self.is_valid and self.cue_count == 0:
+            raise ValueError("A valid subtitle must contain at least one cue")
+        if self.is_valid and self.error is not None:
+            raise ValueError("A valid subtitle cannot contain a validation error")
+        if not self.is_valid and not self.error:
+            raise ValueError("An invalid subtitle requires a validation error")
+
+
+@dataclass(frozen=True, slots=True)
 class SubtitleArtifact:
     origin: SubtitleOrigin
     state: ArtifactState
@@ -78,6 +138,8 @@ class SubtitleArtifact:
     title: str | None = None
     path: Path | None = None
     stream_index: int | None = None
+    validation: SubtitleValidation | None = None
+    message: str | None = None
 
     def __post_init__(self) -> None:
         if not self.language.strip():
@@ -94,6 +156,11 @@ class SubtitleArtifact:
             raise ValueError("External and generated subtitles require a path")
         if self.stream_index is not None:
             raise ValueError("External and generated subtitles cannot use a stream index")
+        if self.validation is not None:
+            if self.state is ArtifactState.VALID and not self.validation.is_valid:
+                raise ValueError("Subtitle state must match its validation result")
+            if self.state is ArtifactState.INVALID and self.validation.is_valid:
+                raise ValueError("Subtitle state must match its validation result")
 
 
 @dataclass(frozen=True, slots=True)
@@ -102,6 +169,10 @@ class VideoInventory:
     streams: tuple[MediaStream, ...] = ()
     subtitles: tuple[SubtitleArtifact, ...] = ()
     existing_output: Path | None = None
+    format_name: str | None = None
+    duration_seconds: float | None = None
+    chapters: tuple[MediaChapter, ...] = ()
+    metadata: tuple[tuple[str, str], ...] = ()
 
     def __post_init__(self) -> None:
         indices = [stream.index for stream in self.streams]
@@ -173,3 +244,28 @@ class VideoResult:
     status: ResultStatus
     message: str = ""
     output_path: Path | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class DiscoveryIssue:
+    kind: DiscoveryIssueKind
+    path: Path
+    message: str
+    candidate_videos: tuple[Path, ...] = ()
+
+    def __post_init__(self) -> None:
+        if not self.message.strip():
+            raise ValueError("Discovery issues require a message")
+
+
+@dataclass(frozen=True, slots=True)
+class DiscoveryResult:
+    inventories: tuple[VideoInventory, ...]
+    issues: tuple[DiscoveryIssue, ...] = ()
+
+    def inventory_for(self, source: Path) -> VideoInventory:
+        resolved_source = source.resolve()
+        for inventory in self.inventories:
+            if inventory.source.resolve() == resolved_source:
+                return inventory
+        raise KeyError(source)

@@ -6,12 +6,23 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
-from .models import MediaStream, SubtitleArtifact, VideoInventory
+from .models import (
+    MediaInspection,
+    MediaStream,
+    SubtitleArtifact,
+    SubtitleValidation,
+    VideoInventory,
+)
 
 
 @runtime_checkable
 class MediaProbe(Protocol):
-    def inspect(self, source: Path) -> tuple[MediaStream, ...]: ...
+    def inspect(self, source: Path) -> MediaInspection: ...
+
+
+@runtime_checkable
+class SubtitleValidator(Protocol):
+    def validate(self, path: Path) -> SubtitleValidation: ...
 
 
 @runtime_checkable

@@ -11,3 +11,7 @@ class InputPathError(SubtitleBridgeError):
 
 class SourceVideoError(SubtitleBridgeError):
     """A candidate video cannot be managed by the selected workspace."""
+
+
+class MediaInspectionError(SubtitleBridgeError):
+    """FFprobe could not produce a usable media inventory."""

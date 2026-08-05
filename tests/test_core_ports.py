@@ -3,10 +3,12 @@ import unittest
 
 from subtitles_bridge.models import (
     ArtifactState,
+    MediaInspection,
     MediaStream,
     StreamKind,
     SubtitleArtifact,
     SubtitleOrigin,
+    SubtitleValidation,
     VideoInventory,
 )
 from subtitles_bridge.ports import (
@@ -16,13 +18,14 @@ from subtitles_bridge.ports import (
     OutputPublisher,
     OutputVerifier,
     SubtitleTranscriber,
+    SubtitleValidator,
 )
 
 
 class FakeAdapters:
     class Probe:
         def inspect(self, source):
-            return (MediaStream(0, StreamKind.VIDEO, "h264"),)
+            return MediaInspection((MediaStream(0, StreamKind.VIDEO, "h264"),))
 
     class Transcriber:
         def transcribe(self, source, audio_stream, destination):
@@ -31,6 +34,10 @@ class FakeAdapters:
                 state=ArtifactState.VALID,
                 path=destination,
             )
+
+    class Validator:
+        def validate(self, path):
+            return SubtitleValidation(True, 1, "utf-8")
 
     class Muxer:
         def mux(self, inventory, subtitles, destination):
@@ -52,6 +59,7 @@ class FakeAdapters:
 class PortBoundaryTests(unittest.TestCase):
     def test_fake_adapters_satisfy_runtime_protocols(self):
         self.assertIsInstance(FakeAdapters.Probe(), MediaProbe)
+        self.assertIsInstance(FakeAdapters.Validator(), SubtitleValidator)
         self.assertIsInstance(FakeAdapters.Transcriber(), SubtitleTranscriber)
         self.assertIsInstance(FakeAdapters.Muxer(), MediaMuxer)
         self.assertIsInstance(FakeAdapters.Verifier(), OutputVerifier)
@@ -62,15 +70,15 @@ class PortBoundaryTests(unittest.TestCase):
         probe = FakeAdapters.Probe()
         transcriber = FakeAdapters.Transcriber()
         source = Path("lesson.mkv")
-        streams = probe.inspect(source)
-        inventory = VideoInventory(source, streams)
+        inspection = probe.inspect(source)
+        inventory = VideoInventory(source, inspection.streams)
         subtitle = transcriber.transcribe(
             source,
             MediaStream(1, StreamKind.AUDIO, "aac", language="eng"),
             Path("staging/lesson.en.srt"),
         )
 
-        self.assertEqual(inventory.video_streams, streams)
+        self.assertEqual(inventory.video_streams, inspection.streams)
         self.assertEqual(subtitle.origin, SubtitleOrigin.GENERATED)
 
 
