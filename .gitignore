@@ -5,5 +5,7 @@ __pycache__/
 sub_en/
 sub_es/
 output/
+trash/
 *.normalized.mp4
 *.subtitled.mp4
+*.subtitled.mkv
