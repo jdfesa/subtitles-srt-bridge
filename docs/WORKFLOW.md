@@ -186,6 +186,47 @@ Esta etapa solo existe cuando el inventario no contiene ningún subtítulo:
 Todos los streams de audio se conservan en el MKV final, incluido cualquiera
 que no haya sido elegido para transcripción.
 
+## Semántica de transcripción P0.5
+
+La etapa `transcribe` se ejecuta únicamente cuando el `BatchPlan` completo es
+ejecutable y el `VideoPlan` la marca como `run`. Un plan `skip` no carga Whisper
+y un lote o plan `needs-input` falla antes de crear staging. La etapa vuelve a
+comprobar que el inventario no tenga ningún subtítulo válido y utiliza
+exactamente el índice de audio elegido por el planner.
+
+El SRT generado se escribe como
+`staging/<base>.generated.<idioma>.srt`. El idioma detectado forma parte del
+nombre para conservar esa metadata durante una reanudación sin archivos
+auxiliares. Si staging ya contiene un único candidato válido de una ejecución
+interrumpida, se reutiliza sin invocar Whisper. Un candidato inválido o varios
+candidatos se tratan como colisión y nunca se sobrescriben.
+
+Whisper no ofrece una selección portable del stream interno de un contenedor.
+Por eso P0.5 extrae exclusivamente el audio elegido a un WAV PCM mono de 16 kHz
+dentro de staging mediante `ffmpeg -map 0:<stream>`. Ese WAV es temporal, no
+forma parte del resultado final y se elimina al terminar o fallar la etapa. La
+decodificación temporal no modifica, comprime ni elimina ningún stream de la
+fuente; el remux final continuará copiándolos todos en P0.6.
+
+El backend importa `openai-whisper` desde el mismo `sys.executable` que ejecuta
+la aplicación, sin resolver un comando global mediante `PATH`. Si falta o está
+incompleto, el error incluye el comando de instalación para ese intérprete.
+Whisper siempre usa la tarea `transcribe`: detecta el idioma o recibe uno
+explícito y produce un único SRT en ese idioma. No ejecuta `translate` ni llama
+a servicios remotos. El modelo predeterminado continúa siendo `small`; el
+dispositivo se deja en selección automática de Whisper y puede configurarse de
+forma explícita, sin fijar siempre CPU o `fp16=False`.
+
+La transcripción tampoco descarga modelos de forma implícita. El modelo debe
+ser una ruta local o existir y superar su checksum en el cache de Whisper. Si
+falta, la etapa informa cómo precargarlo explícitamente cuando haya red, pero
+no inicia una descarga durante el procesamiento.
+
+Después de generar el archivo, el validador SRT de P0.3 debe aprobarlo antes de
+devolver el artefacto. Ante cualquier error se propaga una excepción
+accionable, se eliminan solo los temporales creados por la etapa y permanecen
+intactos el video y los sidecars de entrada.
+
 ## Etapas idempotentes
 
 El pipeline se divide en responsabilidades pequeñas:

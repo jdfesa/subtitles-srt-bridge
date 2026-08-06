@@ -162,7 +162,7 @@ Transformar el inventario en una lista explícita de etapas por video.
   defectos legados como `expectedFailure`.
 - P0.4 no ejecuta Whisper, FFmpeg, publicación ni movimientos.
 
-### [ ] P0.5 Generar un subtítulo solo como fallback
+### [x] P0.5 Generar un subtítulo solo como fallback
 
 Corregir la resolución de Whisper y encapsular la transcripción.
 
@@ -176,6 +176,25 @@ Corregir la resolución de Whisper y encapsular la transcripción.
 - Escribe primero en staging y valida el SRT antes de continuar.
 - No traduce automáticamente ni requiere red.
 - Un fallo devuelve un código no exitoso y no altera insumos.
+
+**Resultado**
+
+- `TranscriptionStage` solo delega cuando el planner marca `transcribe=run`,
+  rechaza planes bloqueados y nunca carga Whisper ante un `skip`.
+- Extracción FFmpeg inyectable que mapea exclusivamente el índice global del
+  audio elegido a un WAV PCM mono de 16 kHz temporal.
+- Backend Python de Whisper cargado desde el intérprete activo, siempre con
+  `task=transcribe` y sin depender del ejecutable global ni de traducción.
+- Modelos locales o cacheados con checksum obligatorio; el procesamiento nunca
+  inicia una descarga implícita.
+- SRT con idioma detectado en el nombre, validación estructural, reanudación de
+  un candidato válido y cero sobrescrituras de staging.
+- Los temporales nuevos se limpian ante éxito o fallo; video y sidecars de
+  entrada permanecen intactos.
+- Todos los fallos se propagan como excepciones de proyecto para que la futura
+  CLI los convierta en estado no exitoso; nunca se devuelven como éxito nulo.
+- 19 pruebas nuevas; la suite completa ejecuta 113 casos y mantiene los 12
+  defectos legados como `expectedFailure`.
 
 ### [ ] P0.6 Empaquetar en MKV copiando todos los streams
 
@@ -324,8 +343,9 @@ contenedor opcional solo cuando el uso fuera del clon lo justifique.
 2. Crear pruebas de caracterización y regresión (P0.1). **Completado.**
 3. Crear el esqueleto modular mínimo (P0.2). **Completado.**
 4. Implementar preflight y planner bajo pruebas (P0.3-P0.4). **Completado.**
-5. Implementar Whisper como fallback (P0.5). **Siguiente fase.**
+5. Implementar Whisper como fallback (P0.5). **Completado.**
 6. Implementar remux MKV, verificación y publicación (P0.6-P0.7).
+   **Siguiente fase: P0.6.**
 7. Implementar cuarentena automática y resumen transaccional (P0.8-P0.9).
 8. Ejecutar P1 en incrementos pequeños.
 9. Repriorizar P2 solamente con evidencia de uso.

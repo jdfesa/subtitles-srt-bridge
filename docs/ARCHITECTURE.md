@@ -121,6 +121,26 @@ discovery sin resolver, no es ejecutable. Esta propiedad será la barrera que
 las futuras capas de aplicación deberán comprobar antes de iniciar etapas con
 efectos.
 
+## Extensión P0.5: transcripción local en staging
+
+P0.5 agrega tres responsabilidades detrás de puertos inyectables:
+
+| Módulo | Responsabilidad |
+| --- | --- |
+| `adapters/ffmpeg_audio.py` | Extraer únicamente el stream elegido a PCM temporal sin tocar la fuente. |
+| `adapters/whisper.py` | Resolver un modelo local e invocar la API Python de Whisper con `task=transcribe`. |
+| `transcription.py` | Respetar el plan, coordinar staging, renderizar/validar SRT y limpiar temporales. |
+
+`AudioExtractor` y `SpeechRecognizer` permiten sustituir FFmpeg y Whisper en
+pruebas. El adaptador Whisper se importa de forma diferida: el resto del núcleo
+continúa siendo importable aunque la dependencia opcional no esté instalada.
+Las fallas esperadas se convierten en excepciones de proyecto; ninguna se
+reduce a un valor nulo que una futura CLI pueda confundir con éxito.
+
+El único archivo persistente de esta etapa es el SRT válido dentro de
+`staging/`. El audio PCM y cualquier SRT nuevo que no supere validación se
+eliminan. Publicación, remux y archivado siguen fuera de P0.5.
+
 ## Pruebas
 
 Los modelos, rutas, puertos, discovery y planner se prueban con `unittest`,

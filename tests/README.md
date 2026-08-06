@@ -25,6 +25,10 @@ python3 -m unittest discover -s tests -v
 - El planner y su resumen se prueban con inventarios inmutables, elecciones de
   audio, salidas verificadas simuladas y colisiones en directorios temporales;
   no ejecutan ninguna etapa productiva.
+- La transcripción usa extractores y reconocedores falsos. Se verifican el
+  comando FFmpeg, cache/checksum del modelo, `task=transcribe`, selección de
+  audio, staging, reanudación, validación y limpieza sin cargar Whisper real ni
+  usar red.
 
 ## Defectos reproducidos
 
