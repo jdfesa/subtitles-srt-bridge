@@ -45,23 +45,28 @@ desarrollo y la validación comienzan en macOS.
 
 ## Flujo implementado actualmente
 
-El código existente todavía es un prototipo anterior al contrato confirmado:
+La CLI P1.1 conecta el contrato confirmado de extremo a extremo:
 
 ```mermaid
 flowchart LR
-    A["Carpeta con archivos MP4"] --> B["process_videos.py"]
-    B --> C["Whisper: video a SRT inglés"]
-    C --> D["deep-translator: inglés a español"]
-    D --> E["video.srt junto al video"]
-    C --> F["sub_en/video.en.srt"]
+    A["Carpeta MP4/MKV"] --> B["CLI y preflight"]
+    B --> C["Reutilizar SRT o Whisper fallback"]
+    C --> D["Remux MKV sin recodificar"]
+    D --> E["Verificar y publicar"]
+    E --> F["Cuarentena en trash/"]
 ```
 
-1. `menu.sh` ofrece instalación, procesamiento, limpieza y ayuda.
-2. `setup.sh` crea `.venv` e instala las dependencias.
-3. `process_videos.py` busca únicamente archivos `.mp4`.
-4. Whisper genera un SRT en inglés con el modelo `small`.
-5. `local_translate_srt.py` lo traduce al español mediante Google.
-6. El flujo no crea todavía el archivo final con pistas seleccionables.
+1. `subtitles_bridge_cli.py` acepta una carpeta desde cualquier `cwd`.
+2. Discovery inspecciona MP4/MKV y todos los subtítulos asociados.
+3. El planner muestra el preflight y bloquea ambigüedades antes de modificar.
+4. La aplicación ejecuta las etapas necesarias y omite Whisper cuando ya hay
+   cualquier subtítulo válido.
+5. El MKV se verifica antes de publicar y mover insumos a `trash/`.
+6. `menu.sh` es un wrapper de esa CLI; `setup.sh` localiza `.venv` y
+   `requirements.txt` desde su propia ubicación.
+
+`process_videos.py` y `local_translate_srt.py` conservan el prototipo legado
+solo para caracterización; el menú ya no los utiliza.
 
 La utilidad de `tools/normalize_video_mp4/` es independiente y sirve como
 referencia para FFprobe, FFmpeg y metadatos, pero su objetivo de normalizar a
@@ -214,23 +219,20 @@ en [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 ## Estado técnico observado (2026-08-05)
 
-El núcleo objetivo ya implementa las fases P0.1-P0.9, pero el comando y el menú
-todavía ejecutan el flujo antiguo y deben considerarse un prototipo:
+El flujo objetivo implementa P0.1-P0.9 y P1.1. Quedan límites operativos
+explícitos para las siguientes fases:
 
-- Whisper instalado en `.venv` no se resuelve correctamente desde el menú;
 - el parser SRT de traducción omite o altera bloques comunes;
 - el parser de traducción todavía contiene mensajes con variables no
   interpoladas;
-- los scripts dependen del directorio de trabajo;
 - existe una red de seguridad offline y un núcleo modular inicial, pero todavía
   no hay CI;
-- la traducción actual usa Google y requiere Internet;
-- existen inventario, planner, transcripción local, remux MKV, verificación,
-  publicación, archivado transaccional, orquestación, resumen de ejecución y
-  códigos de salida en el núcleo, pero todavía no hay un entry point que
-  componga todo el pipeline;
-- el script legado y `menu.sh` ya propagan fallos con estado distinto de cero,
-  aunque conservan su comportamiento funcional anterior;
+- el prototipo de traducción legado usa Google y requiere Internet, pero no
+  forma parte de la CLI principal;
+- P1.2 debe agregar modo solo-preflight, configuración de Whisper, selección
+  explícita de audio y semántica operable de reanudación;
+- P1.3 debe diagnosticar dependencias y dejar de asumir Homebrew durante la
+  instalación;
 - el normalizador MP4 importado es una CLI monolítica independiente y no debe
   conectarse sin pruebas de caracterización.
 

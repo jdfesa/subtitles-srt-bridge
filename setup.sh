@@ -1,7 +1,9 @@
 #!/bin/bash
 
 # Configuration
-VENV_DIR="./.venv"
+PROJECT_ROOT="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+VENV_DIR="$PROJECT_ROOT/.venv"
+VENV_PYTHON="$VENV_DIR/bin/python3"
 
 echo "🔹 Setting up environment for Subtitles Bridge..."
 
@@ -19,12 +21,9 @@ else
     echo "✅ Virtual environment already exists at $VENV_DIR"
 fi
 
-# 3. Activate and Install Dependencies
-echo "🔄 Activating environment and installing/updating dependencies..."
-source "$VENV_DIR/bin/activate"
-
-# Upgrade pip just in case
-pip install --upgrade pip
+# 3. Install dependencies with the virtual environment interpreter
+echo "🔄 Installing/updating dependencies in the virtual environment..."
+"$VENV_PYTHON" -m pip install --upgrade pip
 
 # MacOS Specific Hack: Check for LLVM if installing llvmlite fails or needs building
 if [[ "$(uname)" == "Darwin" ]]; then
@@ -61,7 +60,7 @@ fi
 
 # Install requirements
 echo "📦 Installing Python packages..."
-if pip install -r requirements.txt; then
+if "$VENV_PYTHON" -m pip install -r "$PROJECT_ROOT/requirements.txt"; then
     echo "✅ Dependencies installed successfully!"
 else
     echo "❌ Error installing dependencies."
@@ -71,5 +70,4 @@ fi
 
 echo "🎉 Setup complete!"
 echo "To use the tool, run:"
-echo "  source $VENV_DIR/bin/activate"
-echo "  python3 process_videos.py"
+echo "  \"$VENV_PYTHON\" \"$PROJECT_ROOT/subtitles_bridge_cli.py\" /ruta/a/videos"

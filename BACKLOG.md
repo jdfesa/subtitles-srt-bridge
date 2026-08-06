@@ -355,11 +355,35 @@ Hacer que la CLI represente correctamente el resultado de uno o varios videos.
 
 ## P1 - Operación y mantenibilidad
 
-### [ ] P1.1 Hacer scripts independientes del directorio actual
+### [x] P1.1 Hacer scripts independientes del directorio actual
 
 - Resolver la raíz desde la ubicación del script.
 - Mantener shell como wrapper de macOS/Linux, no como núcleo obligatorio.
 - Proveer una CLI Python utilizable directamente y apta para automatización.
+
+**Resultado**
+
+- `WorkspaceApplication` coordina workspace, discovery, planner, preflight y
+  el ejecutor P0.9 mediante dependencias inyectadas, sin conocer adaptadores
+  concretos.
+- `bootstrap.py` construye el grafo predeterminado con FFprobe, FFmpeg,
+  Whisper local diferido, verificación, publicación y archivado; construir la
+  aplicación no carga modelos ni inicia procesos.
+- `subtitles_bridge_cli.py` funciona directamente desde cualquier directorio y
+  `python -m subtitles_bridge` reutiliza exactamente la misma frontera.
+- La CLI siempre muestra el preflight, ejecuta automáticamente únicamente un
+  plan inequívoco y conserva los códigos `0`, `1`, `2` y `3` de P0.9.
+- `menu.sh` y `setup.sh` resuelven raíz, `.venv`, launcher y requirements desde
+  `BASH_SOURCE[0]`; la carpeta de videos sigue resolviéndose desde el contexto
+  del usuario y el menú admite rutas arrastradas con espacios escapados.
+- Siete pruebas nuevas cubren composición diferida, CLI directa desde otro
+  `cwd`, errores fatales y wrappers shell sin ejecutar herramientas reales. La
+  suite completa ejecuta 182 casos con 11 `expectedFailure` legados.
+- Un smoke test temporal con FFmpeg/FFprobe reales confirmó video, audio y SRT
+  seleccionable no predeterminado en el MKV, más publicación y cuarentena de
+  los dos insumos, sin cargar Whisper.
+- Las opciones de preflight-only, audio, modelo, dispositivo y reanudación
+  permanecen deliberadamente en P1.2.
 
 ### [ ] P1.2 Definir configuración mínima de la CLI
 
@@ -444,5 +468,5 @@ contenedor opcional solo cuando el uso fuera del clon lo justifique.
 7. Implementar cuarentena automática y resumen transaccional (P0.8-P0.9).
    **Completado.**
 8. Ejecutar P1 en incrementos pequeños.
-   **Siguiente fase: P1.1.**
+   **P1.1 completado; siguiente fase: P1.2.**
 9. Repriorizar P2 solamente con evidencia de uso.

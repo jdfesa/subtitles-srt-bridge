@@ -46,6 +46,13 @@ python3 -m unittest discover -s tests -v
   herramientas multimedia.
 - El límite del prototipo legado se ejecuta con entradas temporales para
   comprobar que Python y `menu.sh` no anuncien éxito ante un proceso fallido.
+- La aplicación de workspace, el composition root y la CLI usan dependencias
+  falsas o construcción diferida. Se comprueban preflight, códigos de salida,
+  errores fatales y ejecución directa desde otro `cwd` sin cargar Whisper ni
+  iniciar FFmpeg/FFprobe.
+- `menu.sh` y `setup.sh` se copian a directorios temporales y utilizan
+  intérpretes falsos para verificar rutas absolutas, argumentos y salida sin
+  modificar el entorno real.
 
 ## Defectos reproducidos
 

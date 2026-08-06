@@ -507,6 +507,46 @@ anuncia éxito cuando el proceso devuelve `0`; cualquier otro valor se muestra
 como ejecución no completada. La definición de argumentos y la independencia
 del directorio actual continúan en P1.1-P1.2.
 
+## Entrada ejecutable P1.1
+
+P1.1 conecta el pipeline objetivo mediante una CLI Python mínima. Recibe una
+ruta posicional opcional; si se omite utiliza el directorio desde el que el
+usuario invocó el comando. La raíz del repositorio solo sirve para localizar el
+código, el entorno virtual y los archivos de instalación: nunca reemplaza
+silenciosamente la carpeta de videos elegida.
+
+La ejecución tiene una secuencia fija:
+
+1. validar el workspace sin crear rutas administradas;
+2. ejecutar discovery con FFprobe y validación SRT;
+3. construir y mostrar siempre el preflight completo;
+4. entregar el plan al orquestador P0.9;
+5. mostrar el resumen final y terminar con su código de salida.
+
+Un plan bloqueado también llega al orquestador para producir un resultado
+`needs-input`, pero ninguna etapa con efectos se ejecuta. La CLI no solicita
+confirmación para un plan inequívoco: el archivado automático ya forma parte
+del contrato confirmado. Tampoco descarga modelos, traduce, recodifica,
+sobrescribe ni intenta resolver ambigüedades por aproximación.
+
+La composición predeterminada usa `ffprobe` y `ffmpeg` disponibles en `PATH`,
+el modelo local/cacheado `small` de Whisper y los adaptadores de filesystem ya
+verificados. Whisper continúa cargándose de forma diferida y solo cuando el
+plan marca `transcribe=run`. La selección explícita de audio, modelo,
+dispositivo, reanudación y un futuro modo solo-preflight pertenecen a P1.2.
+
+La forma directa es:
+
+```bash
+python3 /ruta/al/repositorio/subtitles_bridge_cli.py /ruta/a/videos
+```
+
+Cuando el paquete está disponible en el entorno también se admite
+`python3 -m subtitles_bridge`. `menu.sh` es únicamente un wrapper: calcula su
+propia ubicación y llama la misma CLI con rutas absolutas. `setup.sh` aplica la
+misma regla para crear `.venv` e instalar `requirements.txt`, aunque se invoque
+desde otro directorio.
+
 ## Red y privacidad
 
 - Whisper se ejecuta localmente y utiliza CPU/GPU del equipo.

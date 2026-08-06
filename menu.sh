@@ -1,8 +1,10 @@
 #!/bin/bash
 
 # Configuration
-VENV_DIR="./.venv"
+PROJECT_ROOT="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+VENV_DIR="$PROJECT_ROOT/.venv"
 VENV_PYTHON="$VENV_DIR/bin/python3"
+CLI_SCRIPT="$PROJECT_ROOT/subtitles_bridge_cli.py"
 
 # Colors
 GREEN='\033[0;32m'
@@ -34,12 +36,12 @@ run_setup() {
             return
         fi
     fi
-    ./setup.sh
+    "$PROJECT_ROOT/setup.sh"
     read -p "Presiona Enter para continuar..."
 }
 
 run_process() {
-    if [ ! -f "$VENV_PYTHON" ]; then
+    if [ ! -x "$VENV_PYTHON" ]; then
         echo -e "${RED}❌ Error: No se encontró el entorno virtual.${NC}"
         echo "Por favor, ejecuta la opción '1. Instalar / Configurar' primero."
         read -p "Presiona Enter para volver al menú..."
@@ -47,15 +49,15 @@ run_process() {
     fi
 
     echo -e "${GREEN}Introduce la ruta del directorio de videos (o presiona Enter para usar el actual):${NC}"
-    # Use -r to read escapes literally; Python will handle cleanup
-    read -r target_dir
+    # Terminal drag-and-drop may escape spaces with backslashes.
+    IFS= read target_dir
 
     if [ -z "$target_dir" ]; then
-        target_dir="."
+        target_dir="$PWD"
     fi
 
     echo "Iniciando proceso en: $target_dir"
-    if "$VENV_PYTHON" process_videos.py "$target_dir"; then
+    if "$VENV_PYTHON" "$CLI_SCRIPT" "$target_dir"; then
         echo -e "\n${GREEN}✅ Proceso finalizado correctamente.${NC}"
     else
         process_status=$?
@@ -73,11 +75,11 @@ run_clean() {
     if [[ "$answer" == "s" || "$answer" == "S" ]]; then
         echo "Eliminando entorno virtual..."
         rm -rf "$VENV_DIR"
-        
+
         echo "Limpiando caches de Python..."
-        find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null
-        find . -name "*.pyc" -delete
-        
+        find "$PROJECT_ROOT" -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null
+        find "$PROJECT_ROOT" -name "*.pyc" -delete
+
         echo -e "${GREEN}✅ Entorno y archivos temporales eliminados.${NC}"
         echo "Ahora puedes usar la opción 1 para instalarlo nuevamente."
     else
@@ -90,10 +92,11 @@ show_help() {
     echo -e "${YELLOW}ℹ️  GUÍA DE USO${NC}"
     echo "---------------------------------------------------------"
     echo "1. Instalar: Ejecuta esto la primera vez para bajar las herramientas."
-    echo "2. Procesar: Escanea los videos de la carpeta que elijas."
-    echo "   - Genera subtítulos en inglés (si no existen)."
-    echo "   - Los traduce automáticamente al español."
-    echo "   - Organiza los archivos."
+    echo "2. Procesar: Ejecuta el pipeline seguro sobre la carpeta elegida."
+    echo "   - Reutiliza todos los subtítulos válidos disponibles."
+    echo "   - Genera uno con Whisper solo cuando no existe ninguno."
+    echo "   - Crea y verifica un MKV sin recodificar los streams."
+    echo "   - Mueve los insumos incorporados a trash/ al finalizar."
     echo "3. Limpiar: Borra el entorno virtual por si hubo errores."
     echo ""
     echo "Simplemente sigue las instrucciones en pantalla."

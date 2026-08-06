@@ -62,24 +62,35 @@ videos/
 
 ## Estado del proyecto
 
-El contrato funcional todavía no está conectado a un único comando de extremo
-a extremo. Ya están completas las fases P0.1-P0.9: el núcleo posee inventario,
-planner, transcripción local como fallback, remux, verificación, publicación,
-cuarentena, orquestación por lote, resumen y códigos de salida. Sin embargo, el
-comando de procesamiento actual sigue siendo un prototipo anterior que:
+Las fases P0.1-P0.9 y P1.1 están completas. La CLI Python ya conecta discovery,
+planner, transcripción fallback, remux, verificación, publicación, cuarentena,
+resumen y códigos de salida en un único flujo. `menu.sh` llama esa misma CLI y
+puede abrirse desde cualquier directorio sin confundir la raíz del repositorio
+con la carpeta de videos.
 
-- procesa únicamente MP4;
-- genera un SRT inglés con Whisper;
-- lo traduce al español mediante Google;
-- no compone aún estas etapas nuevas desde una CLI de argumentos.
+P1.2 agregará configuración explícita para modo solo-preflight, modelo y
+dispositivo de Whisper, selección de audio y reanudación. Hasta entonces, una
+ambigüedad se informa como `needs-input` sin ejecutar trabajo y una salida
+existente no se reutiliza como verificada por mera presencia.
 
-Por tanto, el menú actual no debe interpretarse como la experiencia final ni
-usarse todavía para confiarle el movimiento de archivos importantes.
-Sus errores ya se propagan y el menú solo anuncia éxito con código `0`, pero su
-flujo funcional continúa siendo el legado.
+## Ejecución
 
-La siguiente fase, P1.1, creará el entry point Python independiente del
-directorio actual y comenzará a conectar el núcleo ya implementado.
+Desde cualquier directorio:
+
+```bash
+python3 /ruta/al/repositorio/subtitles_bridge_cli.py /ruta/a/videos
+```
+
+Desde la raíz del repositorio también puede utilizarse:
+
+```bash
+python3 -m subtitles_bridge /ruta/a/videos
+```
+
+La ruta es opcional y usa el directorio actual por defecto. La CLI muestra el
+preflight y, si no existe ninguna ambigüedad, ejecuta automáticamente el plan.
+Después de verificar el MKV, mueve el original y los SRT incorporados a
+`trash/`; no existe borrado definitivo ni sobrescritura.
 
 ## Pruebas
 
@@ -99,6 +110,8 @@ normal. Un `unexpected success` hace fallar la suite para evitar mantener una
 marca obsoleta.
 
 El inventario de esas reproducciones está en [`tests/README.md`](tests/README.md).
+La suite completa ejecuta 182 casos y mantiene 11 defectos del prototipo
+legado como `expectedFailure`.
 
 ## Requisitos previstos
 
@@ -113,15 +126,15 @@ CLI estarán implementadas en Python.
 
 ## Código existente
 
-- `menu.sh`: menú interactivo del prototipo.
-- `setup.sh`: instalación del entorno actual.
+- `subtitles_bridge_cli.py`: launcher directo e independiente del `cwd`.
+- `menu.sh`: wrapper interactivo de la CLI nueva.
+- `setup.sh`: instalación del entorno resuelta desde la ubicación del script.
 - `process_videos.py`: orquestación monolítica del flujo anterior.
 - `local_translate_srt.py`: traducción remota del flujo anterior.
 - `subtitles_bridge/`: núcleo nuevo con modelos, rutas, discovery, validación
   SRT, FFprobe, planner, resumen previo, transcripción local y remux MKV en
   staging, verificación contractual, publicación atómica, cuarentena segura,
-  orquestación inyectable y resultados detallados; todavía no posee el entry
-  point final que componga el pipeline completo.
+  orquestación inyectable, resultados detallados y composición de aplicación.
 - `tools/normalize_video_mp4/`: utilidad independiente importada para estudiar
   FFprobe, FFmpeg y metadata; no define el contenedor final del nuevo pipeline.
 

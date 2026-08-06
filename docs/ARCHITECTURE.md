@@ -232,6 +232,34 @@ la salida textual y los estados sin procesos reales. P1.1-P1.2 aportarán la CLI
 de argumentos y configuración; P0.9 solo establece la ejecución y propagación
 correctas que esa CLI consumirá.
 
+## Extensión P1.1: composición y entry points
+
+P1.1 agrega una capa fina sobre los casos de uso existentes:
+
+| Módulo | Responsabilidad |
+| --- | --- |
+| `workspace_application.py` | Coordinar rutas, discovery, planner, preflight y ejecución mediante dependencias inyectadas. |
+| `bootstrap.py` | Construir una vez el grafo predeterminado de adaptadores y etapas concretas. |
+| `cli.py` | Analizar únicamente la ruta posicional y devolver el código de la aplicación. |
+| `__main__.py` | Permitir `python -m subtitles_bridge` sin duplicar lógica. |
+| `subtitles_bridge_cli.py` | Launcher Python directo cuya ubicación hace importable el paquete desde cualquier `cwd`. |
+
+`WorkspaceApplication` no conoce FFmpeg, Whisper ni clases de filesystem:
+recibe discovery, planner y executor. Esto permite probar la secuencia completa
+con dobles y evita que argparse se convierta en un nuevo módulo monolítico.
+`bootstrap.py` es el único composition root que conoce adaptadores concretos;
+construirlo no carga Whisper ni inicia procesos.
+
+Los entry points poseen `sys.exit`; el paquete de aplicación continúa
+devolviendo enteros. Las excepciones de workspace, discovery o planificación
+se convierten en un resumen fatal con código `1`, mientras que los estados de
+un plan válido conservan los códigos de P0.9. P1.2 ampliará argumentos y
+elecciones sin cambiar esta dirección de dependencias.
+
+Los scripts shell obtienen `PROJECT_ROOT` desde `BASH_SOURCE[0]`. No cambian el
+directorio del usuario, no contienen lógica multimedia y llaman archivos
+Python, `.venv` y `requirements.txt` mediante rutas absolutas.
+
 ## Pruebas
 
 Los modelos, rutas, puertos, discovery y planner se prueban con `unittest`,

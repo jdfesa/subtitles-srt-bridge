@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
+from typing import Protocol
 
-from .execution import BatchExecutor
-from .models import BatchPlan, PublishedOutput
+from .models import BatchPlan, BatchResult, PublishedOutput
 from .paths import WorkspacePaths
 from .summary import format_batch_result
 
@@ -13,8 +13,29 @@ from .summary import format_batch_result
 Writer = Callable[[str], None]
 
 
+class BatchExecutionApplication(Protocol):
+    def execute(
+        self,
+        batch_plan: BatchPlan,
+        paths: WorkspacePaths,
+        *,
+        published_outputs: Sequence[PublishedOutput] = (),
+    ) -> BatchResult: ...
+
+
+def format_fatal_result(error: Exception) -> str:
+    message = str(error).strip() or repr(error)
+    return "\n".join(
+        (
+            "Batch result: failed",
+            "Exit code: 1",
+            f"Fatal: {type(error).__name__}: {message}",
+        )
+    )
+
+
 def run_batch_application(
-    executor: BatchExecutor,
+    executor: BatchExecutionApplication,
     batch_plan: BatchPlan,
     paths: WorkspacePaths,
     *,
@@ -28,16 +49,7 @@ def run_batch_application(
             published_outputs=published_outputs,
         )
     except Exception as exc:
-        message = str(exc).strip() or repr(exc)
-        write(
-            "\n".join(
-                (
-                    "Batch result: failed",
-                    "Exit code: 1",
-                    f"Fatal: {type(exc).__name__}: {message}",
-                )
-            )
-        )
+        write(format_fatal_result(exc))
         return 1
 
     write(format_batch_result(result))

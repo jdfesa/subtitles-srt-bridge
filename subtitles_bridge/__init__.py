@@ -31,6 +31,7 @@ from .models import (
 )
 from .paths import WorkspacePaths
 from .execution import BatchExecutor
+from .workspace_application import WorkspaceApplication
 
 __all__ = [
     "ArchivedInputs",
@@ -62,4 +63,5 @@ __all__ = [
     "VideoPlan",
     "VideoResult",
     "WorkspacePaths",
+    "WorkspaceApplication",
 ]
