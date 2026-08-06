@@ -131,7 +131,7 @@ def build_ffmpeg_mux_command(
             )
 
     for output_index in range(embedded_count + len(sidecars)):
-        command.extend((f"-disposition:s:{output_index}", "0"))
+        command.extend((f"-disposition:s:{output_index}", "-default"))
     command.extend(
         ("-default_mode", "passthrough", "-f", "matroska", str(destination))
     )
