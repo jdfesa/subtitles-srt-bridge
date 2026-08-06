@@ -5,7 +5,10 @@ import sys
 import tempfile
 import unittest
 
-from subtitles_bridge.bootstrap import build_default_workspace_application
+from subtitles_bridge.bootstrap import (
+    build_default_doctor_application,
+    build_default_workspace_application,
+)
 from subtitles_bridge.cli import main
 from subtitles_bridge.adapters.whisper import WhisperConfig
 from subtitles_bridge.workspace_application import AudioSelection, WorkspaceApplication
@@ -32,6 +35,17 @@ class RecordingApplication:
             (directory, preflight_only, tuple(audio_selections), resume, write)
         )
         write(f"ran {directory}")
+        return self.exit_code
+
+
+class RecordingDoctor:
+    def __init__(self, exit_code=0):
+        self.exit_code = exit_code
+        self.calls = []
+
+    def run(self, *, write=print):
+        self.calls.append(write)
+        write("doctor ran")
         return self.exit_code
 
 
@@ -68,6 +82,43 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 1)
         self.assertIn("RuntimeError: cannot compose application", written[0])
+
+    def test_doctor_uses_separate_factory_without_workspace_application(self):
+        doctor = RecordingDoctor(exit_code=1)
+        configs = []
+
+        def fail_application(_config):
+            raise AssertionError("workspace application must not be built")
+
+        written = []
+        exit_code = main(
+            ["--doctor", "--whisper-model", "tiny"],
+            application_factory=fail_application,
+            doctor_factory=lambda config: configs.append(config) or doctor,
+            write=written.append,
+        )
+
+        self.assertEqual(exit_code, 1)
+        self.assertEqual(configs, [WhisperConfig(model="tiny")])
+        self.assertEqual(written, ["doctor ran"])
+
+    def test_doctor_rejects_workspace_and_processing_options(self):
+        for arguments in (
+            ["/media/input", "--doctor"],
+            ["--doctor", "--preflight"],
+            ["--doctor", "--audio", "lesson.mkv=1"],
+            ["--doctor", "--resume"],
+        ):
+            with self.subTest(arguments=arguments):
+                written = []
+                exit_code = main(
+                    arguments,
+                    doctor_factory=lambda _config: RecordingDoctor(),
+                    write=written.append,
+                )
+                self.assertEqual(exit_code, 1)
+                self.assertIn("Doctor result: failed", written[0])
+                self.assertIn("does not accept", written[0])
 
     def test_passes_operational_options_and_whisper_configuration(self):
         application = RecordingApplication()
@@ -113,6 +164,11 @@ class CliTests(unittest.TestCase):
         recognizer = application.executor.transcription.transcriber.recognizer
         self.assertIsNone(recognizer._model)
         self.assertEqual(recognizer.config, WhisperConfig(device="cpu"))
+
+        doctor = build_default_doctor_application(WhisperConfig(model="tiny"))
+        model_checker = doctor.doctor.model_checker
+        self.assertIsNone(model_checker.__self__._model)
+        self.assertEqual(model_checker.__self__.config.model, "tiny")
 
     def test_direct_and_module_launchers_share_the_cli(self):
         with tempfile.TemporaryDirectory() as temp_dir:

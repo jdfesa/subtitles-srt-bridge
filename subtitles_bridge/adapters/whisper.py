@@ -69,6 +69,10 @@ class WhisperSpeechRecognizer:
 
         return self._parse_result(result)
 
+    def verify_local_model(self) -> Path:
+        """Resolve and checksum the configured checkpoint without loading it."""
+        return self._resolve_checkpoint(self._load_whisper_module())
+
     def _load_audio(self, audio: Path) -> Any:
         if self.audio_loader is not None:
             return self.audio_loader(audio)

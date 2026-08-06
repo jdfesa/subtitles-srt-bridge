@@ -7,11 +7,16 @@ from collections.abc import Callable, Sequence
 
 from .application import format_fatal_result
 from .adapters.whisper import WhisperConfig
-from .bootstrap import build_default_workspace_application
+from .bootstrap import (
+    build_default_doctor_application,
+    build_default_workspace_application,
+)
+from .diagnostics import DoctorApplication, format_diagnostic_fatal
 from .workspace_application import AudioSelection, WorkspaceApplication, Writer
 
 
 ApplicationFactory = Callable[[WhisperConfig], WorkspaceApplication]
+DoctorFactory = Callable[[WhisperConfig], DoctorApplication]
 
 
 def _non_empty(value: str) -> str:
@@ -44,6 +49,11 @@ def build_parser() -> argparse.ArgumentParser:
         nargs="?",
         default=".",
         help="workspace containing non-recursive MP4/MKV inputs (default: cwd)",
+    )
+    parser.add_argument(
+        "--doctor",
+        action="store_true",
+        help="check the local runtime without processing a workspace",
     )
     parser.add_argument(
         "--preflight",
@@ -83,19 +93,38 @@ def main(
     argv: Sequence[str] | None = None,
     *,
     application_factory: ApplicationFactory = build_default_workspace_application,
+    doctor_factory: DoctorFactory = build_default_doctor_application,
     write: Writer = print,
 ) -> int:
     arguments = build_parser().parse_args(argv)
     try:
-        application = application_factory(
-            WhisperConfig(
-                model=arguments.whisper_model,
-                device=arguments.whisper_device,
-            )
+        config = WhisperConfig(
+            model=arguments.whisper_model,
+            device=arguments.whisper_device,
         )
+        if arguments.doctor:
+            invalid_options = (
+                arguments.directory != "."
+                or arguments.preflight
+                or bool(arguments.audio)
+                or arguments.resume
+            )
+            if invalid_options:
+                raise ValueError(
+                    "--doctor does not accept a workspace or processing options"
+                )
+            doctor = doctor_factory(config)
+        else:
+            application = application_factory(config)
     except Exception as exc:
-        write(format_fatal_result(exc))
+        write(
+            format_diagnostic_fatal(exc)
+            if arguments.doctor
+            else format_fatal_result(exc)
+        )
         return 1
+    if arguments.doctor:
+        return doctor.run(write=write)
     return application.run(
         arguments.directory,
         preflight_only=arguments.preflight,

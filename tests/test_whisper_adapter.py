@@ -96,6 +96,24 @@ class WhisperSpeechRecognizerTests(unittest.TestCase):
         self.assertEqual(transcript.segments[0].text, "Привет")
         self.assertEqual(second_transcript, transcript)
 
+    def test_verifies_local_model_without_loading_it(self):
+        cache, checkpoint, url = self.make_cache()
+        load_calls = []
+        module = SimpleNamespace(
+            _MODELS={"small": url},
+            load_model=lambda *args, **kwargs: load_calls.append((args, kwargs)),
+        )
+        recognizer = WhisperSpeechRecognizer(
+            WhisperConfig(model="small", cache_directory=cache),
+            module_loader=lambda name: module,
+        )
+
+        resolved = recognizer.verify_local_model()
+
+        self.assertEqual(resolved, checkpoint.resolve())
+        self.assertEqual(load_calls, [])
+        self.assertIsNone(recognizer._model)
+
     def test_uses_explicit_local_checkpoint_language_and_device(self):
         _, checkpoint, _ = self.make_cache()
         model = FakeModel(

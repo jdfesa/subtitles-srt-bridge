@@ -11,6 +11,7 @@ from .adapters.whisper import WhisperConfig, WhisperSpeechRecognizer
 from .archiving import ArchivingStage
 from .batch_planner import BatchPlanner
 from .discovery import WorkspaceDiscovery
+from .diagnostics import DoctorApplication, RuntimeDoctor
 from .execution import BatchExecutor
 from .muxing import MuxingStage
 from .publishing import PublishingStage
@@ -43,4 +44,17 @@ def build_default_workspace_application(
         BatchPlanner(),
         executor,
         ExistingOutputResumer(OutputContractVerifier(probe), validator),
+    )
+
+
+def build_default_doctor_application(
+    whisper_config: WhisperConfig | None = None,
+) -> DoctorApplication:
+    config = whisper_config or WhisperConfig()
+    recognizer = WhisperSpeechRecognizer(config)
+    return DoctorApplication(
+        RuntimeDoctor(
+            recognizer.verify_local_model,
+            model_name=config.model,
+        )
     )

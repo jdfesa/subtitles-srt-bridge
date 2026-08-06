@@ -36,7 +36,12 @@ run_setup() {
             return
         fi
     fi
-    "$PROJECT_ROOT/setup.sh"
+    if "$PROJECT_ROOT/setup.sh"; then
+        echo -e "${GREEN}✅ Instalación y diagnóstico completados.${NC}"
+    else
+        setup_status=$?
+        echo -e "${RED}❌ La instalación no se completó (código $setup_status).${NC}"
+    fi
     read -p "Presiona Enter para continuar..."
 }
 
@@ -99,6 +104,7 @@ show_help() {
     echo "   - Mueve los insumos incorporados a trash/ al finalizar."
     echo "   - La CLI directa ofrece --preflight, --audio y --resume."
     echo "   - También admite --whisper-model y --whisper-device."
+    echo "   - Usa --doctor para comprobar Python, FFmpeg, FFprobe y Whisper."
     echo "3. Limpiar: Borra el entorno virtual por si hubo errores."
     echo ""
     echo "Simplemente sigue las instrucciones en pantalla."
