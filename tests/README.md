@@ -36,6 +36,10 @@ python3 -m unittest discover -s tests -v
   reemplazos falsos. Se prueban streams, codecs, metadata, capítulos, duración,
   disposiciones, cambios posteriores, colisiones y movimientos atómicos sin
   FFprobe ni filesystem productivo.
+- El archivado usa pruebas publicadas, recibos inmutables y movers inyectables.
+  Se comprueban insumos exactos, sidecars generados, colisiones, orden de
+  movimientos, rollback, fallos parciales y reanudación sin repetir etapas
+  costosas.
 
 ## Defectos reproducidos
 

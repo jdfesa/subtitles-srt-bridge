@@ -275,7 +275,7 @@ No aceptar una salida por mera existencia o por el código de FFmpeg.
 - 17 pruebas nuevas; la suite completa ejecuta 144 casos y mantiene los 12
   defectos legados como `expectedFailure`.
 
-### [ ] P0.8 Archivar automáticamente en `trash/`
+### [x] P0.8 Archivar automáticamente en `trash/`
 
 Mover los insumos consumidos únicamente después de publicar un MKV verificado.
 
@@ -290,6 +290,30 @@ Mover los insumos consumidos únicamente después de publicar un MKV verificado.
 - Una colisión se detecta en preflight.
 - Un fallo de archivado conserva el MKV válido, informa estado `partial` y puede
   reanudarse sin repetir Whisper ni FFmpeg.
+
+**Resultado**
+
+- `PublishingStage` produce `PublishedOutput`, una prueba inmutable que vincula
+  la salida final con su fuente, subtítulos exactos, inspección, tamaño y
+  `mtime`; `archive` rechaza rutas sueltas o snapshots obsoletos.
+- `ArchivingStage` respeta el plan completo, mueve únicamente la fuente y los
+  SRT externos o generados incorporados, conserva el MKV publicado y nunca
+  ejecuta el backend ante `skip` o `needs-input`.
+- `TransactionalInputArchiver` valida todos los insumos, reserva de forma
+  exclusiva `trash/<base>/` y cada destino, mueve primero sidecars y deja la
+  fuente para el final sin copiar archivos grandes en memoria.
+- Un fallo restaura en orden inverso lo ya movido y retira únicamente reservas
+  propias. Si también falla el rollback, conserva el destino parcial y detalla
+  las rutas para revisión manual; ninguna variante sobrescribe o elimina
+  contenido útil.
+- Los fallos posteriores a una publicación válida se propagan como
+  `ArchivingPartialError`. Tras un rollback completo puede reintentarse solo
+  `archive`; una salida previamente verificada mantiene las etapas costosas en
+  `skip`.
+- El planner bloquea antes de ejecutar dos sidecars que al aplanarse en
+  `trash/<base>/` compartirían nombre sin distinguir mayúsculas.
+- 15 pruebas nuevas; la suite completa ejecuta 159 casos y mantiene los 12
+  defectos legados como `expectedFailure`.
 
 ### [ ] P0.9 Propagar fallos y resumir el lote
 
@@ -393,6 +417,6 @@ contenedor opcional solo cuando el uso fuera del clon lo justifique.
 6. Implementar remux MKV, verificación y publicación (P0.6-P0.7).
    **Completado.**
 7. Implementar cuarentena automática y resumen transaccional (P0.8-P0.9).
-   **Siguiente fase: P0.8.**
+   **P0.8 completado; siguiente fase: P0.9.**
 8. Ejecutar P1 en incrementos pequeños.
 9. Repriorizar P2 solamente con evidencia de uso.

@@ -388,6 +388,50 @@ Después de verificar:
 Las pistas embebidas no tienen sidecar que mover: permanecen dentro del original
 archivado y del MKV final.
 
+### Semántica de archivado P0.8
+
+`archive` se ejecuta solamente cuando el `BatchPlan` completo es ejecutable y
+la etapa está marcada como `run`. Una decisión `skip` no crea `trash/` ni mueve
+archivos; una decisión `needs-input` falla antes de tocar el filesystem. La
+etapa exige una prueba inmutable `PublishedOutput` vinculada con la fuente y con
+`output/<base>.subtitled.mkv`; una ruta existente o un plan por sí solos no
+autorizan a mover insumos.
+
+La publicación produce esa prueba a partir del `VerifiedOutput` de P0.7 y
+conserva el snapshot de tamaño y `mtime`. Antes de archivar se vuelve a comprobar
+que el MKV final sigue siendo un archivo regular, no vacío, no es un enlace y
+coincide con ese snapshot. Una reanudación puede suministrar una prueba
+equivalente para una salida ya verificada; en ese caso el planner mantiene
+`transcribe`, `mux`, `verify` y `publish` en `skip`, y ejecuta únicamente
+`archive`.
+
+Los insumos exactos son el video fuente y los artefactos con origen `external`
+o `generated` registrados en la prueba publicada. Los subtítulos embebidos no
+añaden archivos; un SRT inválido, ambiguo, no incorporado o meramente presente
+en la carpeta nunca se mueve. Los sidecars conservan su nombre de archivo dentro
+de `trash/<base>/`, aunque provinieran de una ubicación reconocida como `sub/` o
+`sub_en/`. Por eso dos insumos cuyos nombres colisionen sin distinguir
+mayúsculas bloquean el preflight en lugar de elegir o renombrar silenciosamente.
+
+El adaptador valida todos los insumos antes del primer movimiento, crea
+`trash/<base>/` de forma exclusiva y reserva también cada destino sin
+sobrescribir. Mueve primero los sidecars y deja el video fuente para el final,
+de modo que una transacción incompleta no oculte prematuramente el video a
+discovery. Los movimientos ocurren dentro del mismo workspace y reemplazan
+únicamente las reservas vacías creadas por la propia operación.
+
+Si un movimiento falla, el adaptador intenta restaurar en orden inverso todo lo
+que ya había movido y elimina solamente su directorio de destino si volvió a
+quedar vacío. El MKV publicado nunca participa del rollback. Un rollback
+completo deja los insumos en sus ubicaciones y permite reintentar solo
+`archive` con la salida verificada ya existente, sin repetir Whisper ni FFmpeg.
+Si también falla la restauración, se conservan los archivos alcanzables y el
+directorio parcial, se informa cada ruta pendiente y la colisión queda visible
+para resolución manual; nunca se fuerza una sobrescritura para completar el
+archivado. Como la salida publicada permanece válida, cualquier fallo del
+adaptador se propaga como `ArchivingPartialError` para que P0.9 lo convierta en
+estado `partial` y código de salida no exitoso.
+
 ## Archivos existentes y reanudación
 
 - Una salida existente no se acepta solo por su nombre: debe verificarse.

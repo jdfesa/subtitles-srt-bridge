@@ -182,6 +182,30 @@ verificado y jamás toca la fuente o los sidecars; esos movimientos pertenecen
 a P0.8. Una salida rechazada permanece en staging para diagnóstico y nunca se
 trata como válida por mera existencia.
 
+## Extensión P0.8: cuarentena transaccional
+
+P0.8 agrega una prueba de publicación y separa la política de aplicación de los
+movimientos concretos:
+
+| Módulo | Responsabilidad |
+| --- | --- |
+| `PublishedOutput` | Vincular la salida final con su fuente, subtítulos exactos y snapshot verificado. |
+| `archiving.py` | Respetar el plan, comprobar la prueba publicada y seleccionar únicamente los insumos consumidos. |
+| `adapters/filesystem_archive.py` | Reservar `trash/<base>/`, mover sin sobrescritura y revertir movimientos parciales. |
+| `ArchivedInputs` | Registrar de forma inmutable las rutas originales y sus destinos de cuarentena. |
+
+`PublishingStage` deja de devolver una ruta sin contexto y produce
+`PublishedOutput`. `ArchivingStage` valida de nuevo el MKV final, deriva los
+sidecars desde los mismos artefactos aprobados por verificación y delega en
+`InputArchiver`. El adaptador recibe un movimiento inyectable para simular
+éxitos, fallos y rollback sin depender del filesystem productivo.
+
+La cuarentena no intenta convertir varios movimientos en una falsa operación
+atómica. Reserva todos los destinos, mueve el video al final y, ante un fallo,
+restaura en orden inverso los archivos ya movidos. Solo elimina reservas y un
+directorio vacío creados por la propia ejecución; nunca borra contenido útil,
+la salida publicada ni un destino preexistente.
+
 ## Pruebas
 
 Los modelos, rutas, puertos, discovery y planner se prueban con `unittest`,
