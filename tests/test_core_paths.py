@@ -46,6 +46,7 @@ class WorkspacePathsTests(unittest.TestCase):
             output = paths.output_for(video)
             trash = paths.trash_for(video)
             generated_subtitle = paths.generated_subtitle_target(video)
+            staged_output = paths.staged_output_for(video)
 
             self.assertEqual(
                 output,
@@ -55,6 +56,10 @@ class WorkspacePathsTests(unittest.TestCase):
             self.assertEqual(
                 generated_subtitle,
                 paths.root / "staging" / "Lesson.01.generated.srt",
+            )
+            self.assertEqual(
+                staged_output,
+                paths.root / "staging" / "Lesson.01.subtitled.mkv",
             )
             self.assertFalse(paths.output_directory.exists())
             self.assertFalse(paths.trash_directory.exists())

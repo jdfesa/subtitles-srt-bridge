@@ -39,3 +39,11 @@ class StagingCollisionError(TranscriptionError):
 
 class GeneratedSubtitleError(TranscriptionError):
     """Whisper output did not produce a valid reusable SRT."""
+
+
+class MuxingError(SubtitleBridgeError):
+    """The planned MKV remux could not be completed safely."""
+
+
+class MuxingCollisionError(MuxingError):
+    """A staged MKV path is occupied and cannot be overwritten."""

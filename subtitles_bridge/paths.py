@@ -67,3 +67,7 @@ class WorkspacePaths:
     def generated_subtitle_target(self, raw_source: str | Path) -> Path:
         source = self.source_video(raw_source)
         return self.staging_directory / f"{source.stem}.generated.srt"
+
+    def staged_output_for(self, raw_source: str | Path) -> Path:
+        source = self.source_video(raw_source)
+        return self.staging_directory / f"{source.stem}.subtitled.mkv"
