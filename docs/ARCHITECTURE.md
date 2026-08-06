@@ -141,6 +141,25 @@ El único archivo persistente de esta etapa es el SRT válido dentro de
 `staging/`. El audio PCM y cualquier SRT nuevo que no supere validación se
 eliminan. Publicación, remux y archivado siguen fuera de P0.5.
 
+## Extensión P0.6: remux MKV en staging
+
+P0.6 conserva el puerto `MediaMuxer` y agrega dos componentes:
+
+| Módulo | Responsabilidad |
+| --- | --- |
+| `adapters/ffmpeg_mux.py` | Construir y ejecutar un comando FFmpeg de copia total, sin sobrescritura ni recodificación. |
+| `muxing.py` | Respetar el plan, reunir exactamente los subtítulos previstos y controlar la salida de staging. |
+
+El constructor del comando es puro y se prueba sin FFmpeg. El adaptador recibe
+un runner inyectable, agrega solamente sidecars validados y deja que FFmpeg lea
+los archivos por streaming. La etapa de aplicación distingue un sidecar
+generado por P0.5 de los artefactos ya seleccionados por el planner y nunca
+adivina entradas adicionales.
+
+P0.6 termina con un MKV temporal no verificado. `OutputVerifier` y
+`OutputPublisher` permanecen sin implementación hasta P0.7, por lo que ninguna
+salida de esta fase llega a `output/` ni habilita movimientos a `trash/`.
+
 ## Pruebas
 
 Los modelos, rutas, puertos, discovery y planner se prueban con `unittest`,

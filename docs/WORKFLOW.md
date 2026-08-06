@@ -247,6 +247,46 @@ mediante dobles y fixtures pequeños.
 El resultado se escribe primero en staging y usa MKV porque acepta de manera
 flexible múltiples streams y subtítulos.
 
+### Semántica de remux P0.6
+
+La etapa `mux` solo se ejecuta cuando el `BatchPlan` completo es ejecutable y
+el `VideoPlan` la marca como `run`. Un plan `skip` no inicia FFmpeg; un plan o
+lote bloqueado falla antes de crear archivos. P0.6 deja el resultado en
+`staging/<base>.subtitled.mkv`: todavía no lo considera verificado, no lo mueve
+a `output/` y no archiva ningún insumo.
+
+La ruta de staging es exclusiva. Si ya existe un archivo, directorio o enlace
+con ese nombre, la etapa informa una colisión y nunca lo reemplaza ni lo acepta
+como válido por mera existencia. P0.7 será responsable de verificar y publicar
+una salida temporal.
+
+El comando se construye de forma explícita:
+
+- la fuente es el primer input y se incorpora completa mediante `-map 0`;
+- cada SRT externo o generado es un input adicional y se mapea una sola vez;
+- los subtítulos embebidos no se vuelven a agregar porque ya forman parte de
+  `-map 0`;
+- metadata global y capítulos se copian desde la fuente;
+- `-c copy` se aplica a todos los streams y nunca existe un fallback de
+  recodificación;
+- los streams desconocidos también se intentan copiar; si Matroska no puede
+  representarlos, FFmpeg debe fallar en lugar de omitirlos silenciosamente;
+- idioma y título se asignan a los SRT agregados cuando están disponibles;
+- todas las pistas de subtítulos, incluidas las embebidas, reciben disposición
+  no predeterminada y Matroska conserva esas disposiciones sin inferir otra;
+- la codificación validada del SRT se entrega a FFmpeg cuando no es UTF-8, sin
+  reescribir el sidecar original.
+
+Cuando `transcribe=run`, `mux` exige exactamente el artefacto generado y
+validado por P0.5. Cuando `transcribe=skip`, utiliza exactamente los subtítulos
+válidos seleccionados por el planner y rechaza un artefacto adicional no
+planificado. Un SRT inválido, sin validación o desaparecido nunca se incorpora.
+
+FFmpeg procesa los archivos por streaming: ni el video ni los audios se cargan
+completos en memoria. Si el proceso falla o deja una salida parcial o vacía, se
+elimina únicamente ese MKV nuevo de staging; el video fuente y todos los SRT
+permanecen intactos.
+
 El comando FFmpeg debe:
 
 - mapear todos los streams del original;

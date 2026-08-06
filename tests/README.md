@@ -29,6 +29,9 @@ python3 -m unittest discover -s tests -v
   comando FFmpeg, cache/checksum del modelo, `task=transcribe`, selección de
   audio, staging, reanudación, validación y limpieza sin cargar Whisper real ni
   usar red.
+- El remux usa runners y muxers falsos. Se comprueban mapeo total, copia de
+  streams, SRT externos/generados, codificaciones, metadata, disposiciones,
+  colisiones y limpieza de salidas parciales sin ejecutar FFmpeg real.
 
 ## Defectos reproducidos
 

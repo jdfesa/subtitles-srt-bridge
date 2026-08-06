@@ -196,7 +196,7 @@ Corregir la resolución de Whisper y encapsular la transcripción.
 - 19 pruebas nuevas; la suite completa ejecuta 113 casos y mantiene los 12
   defectos legados como `expectedFailure`.
 
-### [ ] P0.6 Empaquetar en MKV copiando todos los streams
+### [x] P0.6 Empaquetar en MKV copiando todos los streams
 
 Crear el resultado con FFmpeg sin recodificación ni descarte silencioso.
 
@@ -213,6 +213,29 @@ Crear el resultado con FFmpeg sin recodificación ni descarte silencioso.
 - Falla antes que recodificar o descartar un stream incompatible.
 - Un video grande no se carga en memoria ni se comprime.
 - La construcción del comando tiene pruebas unitarias.
+
+**Resultado**
+
+- `MuxingStage` ejecuta únicamente planes completos con `mux=run`, reúne
+  exactamente los subtítulos previstos y exige el artefacto generado por P0.5
+  cuando corresponde.
+- Constructor FFmpeg puro con `-map 0`, inputs SRT explícitos, metadata y
+  capítulos de la fuente, `-copy_unknown` y `-c copy` para impedir cualquier
+  recodificación o descarte automático.
+- Todos los subtítulos quedan con disposición no predeterminada; Matroska usa
+  `default_mode=passthrough` y los SRT agregados reciben idioma y título cuando
+  se conocen.
+- Los SRT CP1252 y UTF-16 utilizan la codificación detectada por el validador
+  sin reescribir los sidecars; los artefactos inválidos o no validados se
+  rechazan.
+- La salida exclusiva se reserva en staging, FFmpeg trabaja en un MKV hermano
+  y solo finaliza el destino después de producir un archivo no vacío. Un fallo
+  limpia la reserva y el parcial sin modificar entradas.
+- Un smoke test manual con FFmpeg/FFprobe reales confirmó dos audios con
+  idiomas, títulos y disposiciones preservados, más subtítulos embebido y
+  externo seleccionables con disposición `default=0`.
+- 14 pruebas nuevas; la suite completa ejecuta 127 casos y mantiene los 12
+  defectos legados como `expectedFailure`.
 
 ### [ ] P0.7 Verificar y publicar atómicamente
 
@@ -345,7 +368,7 @@ contenedor opcional solo cuando el uso fuera del clon lo justifique.
 4. Implementar preflight y planner bajo pruebas (P0.3-P0.4). **Completado.**
 5. Implementar Whisper como fallback (P0.5). **Completado.**
 6. Implementar remux MKV, verificación y publicación (P0.6-P0.7).
-   **Siguiente fase: P0.6.**
+   **P0.6 completado; siguiente fase: P0.7.**
 7. Implementar cuarentena automática y resumen transaccional (P0.8-P0.9).
 8. Ejecutar P1 en incrementos pequeños.
 9. Repriorizar P2 solamente con evidencia de uso.
