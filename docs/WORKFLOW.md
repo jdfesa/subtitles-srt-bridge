@@ -272,8 +272,9 @@ El comando se construye de forma explícita:
 - los streams desconocidos también se intentan copiar; si Matroska no puede
   representarlos, FFmpeg debe fallar en lugar de omitirlos silenciosamente;
 - idioma y título se asignan a los SRT agregados cuando están disponibles;
-- todas las pistas de subtítulos, incluidas las embebidas, reciben disposición
-  no predeterminada y Matroska conserva esas disposiciones sin inferir otra;
+- todas las pistas de subtítulos, incluidas las embebidas, pierden únicamente
+  la marca `default`; otras disposiciones como `forced` o `hearing_impaired`
+  se conservan y Matroska no infiere una nueva pista predeterminada;
 - la codificación validada del SRT se entrega a FFmpeg cuando no es UTF-8, sin
   reescribir el sidecar original.
 
@@ -303,6 +304,47 @@ estructura del contenedor, pero los payloads de audio y video mantienen sus
 codecs y calidad.
 
 ## Verificación
+
+### Semántica de verificación y publicación P0.7
+
+`verify` y `publish` respetan el `BatchPlan` completo igual que las etapas
+anteriores. Un lote bloqueado falla antes de inspeccionar o crear destinos; una
+decisión `skip` no repite la operación. La verificación acepta exclusivamente
+`staging/<base>.subtitled.mkv` y los mismos artefactos que P0.6 recibió del
+planner o de la transcripción.
+
+El verificador obtiene una nueva inspección FFprobe y exige que el archivo no
+cambie de tamaño ni fecha de modificación durante la lectura. La salida debe
+ser Matroska y su secuencia de streams debe contener primero, en el mismo orden,
+todos los streams de la fuente; después aparecen exactamente los SRT externos
+o generados agregados por P0.6. No se admiten streams faltantes ni inesperados.
+
+Por cada stream original se comparan tipo y codec. En audio también deben
+coincidir idioma, título y todas las disposiciones. Los subtítulos embebidos
+conservan codec, idioma, título y todas sus disposiciones salvo `default`, que
+debe estar ausente. Los SRT agregados deben ser `subrip`, conservar idioma y
+título cuando eran conocidos y tampoco pueden ser predeterminados.
+
+La metadata estable de la fuente debe aparecer en la salida. Se ignoran
+únicamente campos técnicos dependientes del contenedor o regenerados por
+FFmpeg, como `encoder`, `major_brand`, `minor_version`, `compatible_brands`,
+`handler_name`, `vendor_id`, `creation_time` a nivel de stream y tags de
+duración. Los capítulos mantienen orden, cantidad, títulos y metadata, con una
+tolerancia de 50 milisegundos para sus tiempos. La duración total admite una
+diferencia absoluta máxima de 1 segundo para absorber redondeos de timebase sin
+ocultar un truncamiento real.
+
+Una verificación exitosa produce una prueba inmutable con ruta, inspección,
+tamaño y `mtime`. La publicación vuelve a comprobar esa identidad antes de
+mover el archivo. Si la verificación falla, el MKV permanece en staging para
+diagnóstico, pero nunca llega a `output/`; el video y los SRT de entrada siguen
+intactos.
+
+La publicación crea `output/` solamente después de verificar, rechaza enlaces
+o rutas ocupadas, reserva el destino de forma exclusiva y mueve el MKV con una
+operación atómica dentro del mismo workspace. Nunca reemplaza una salida
+existente. Al terminar debe existir únicamente
+`output/<base>.subtitled.mkv`; el archivado de fuentes continúa fuera de P0.7.
 
 Antes de considerar exitoso un video, la CLI comprueba al menos:
 

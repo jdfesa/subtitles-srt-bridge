@@ -226,8 +226,8 @@ y debe considerarse un prototipo:
   no hay CI;
 - la traducción actual usa Google y requiere Internet;
 - existen inventario, planner, resumen previo, transcripción local y remux MKV
-  en staging en el núcleo, pero todavía no hay CLI nueva, verificación,
-  publicación ni archivado;
+  en staging, verificación y publicación atómica en el núcleo, pero todavía no
+  hay CLI nueva ni archivado transaccional;
 - el normalizador MP4 importado es una CLI monolítica independiente y no debe
   conectarse sin pruebas de caracterización.
 

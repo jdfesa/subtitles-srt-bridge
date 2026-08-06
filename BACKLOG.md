@@ -223,8 +223,8 @@ Crear el resultado con FFmpeg sin recodificación ni descarte silencioso.
   capítulos de la fuente, `-copy_unknown` y `-c copy` para impedir cualquier
   recodificación o descarte automático.
 - Todos los subtítulos quedan con disposición no predeterminada; Matroska usa
-  `default_mode=passthrough` y los SRT agregados reciben idioma y título cuando
-  se conocen.
+  `default_mode=passthrough`, se conservan otras marcas como `forced` y los SRT
+  agregados reciben idioma y título cuando se conocen.
 - Los SRT CP1252 y UTF-16 utilizan la codificación detectada por el validador
   sin reescribir los sidecars; los artefactos inválidos o no validados se
   rechazan.
@@ -237,7 +237,7 @@ Crear el resultado con FFmpeg sin recodificación ni descarte silencioso.
 - 14 pruebas nuevas; la suite completa ejecuta 127 casos y mantiene los 12
   defectos legados como `expectedFailure`.
 
-### [ ] P0.7 Verificar y publicar atómicamente
+### [x] P0.7 Verificar y publicar atómicamente
 
 No aceptar una salida por mera existencia o por el código de FFmpeg.
 
@@ -251,6 +251,29 @@ No aceptar una salida por mera existencia o por el código de FFmpeg.
 - Solo una salida válida se mueve atómicamente a `output/`.
 - Nunca se reemplaza una salida previa sin una política explícita.
 - Un fallo conserva el original y todos los sidecars en su ubicación.
+
+**Resultado**
+
+- `OutputContractVerifier` vuelve a inspeccionar el MKV con un `MediaProbe`
+  inyectable y exige Matroska, cantidad y orden exactos de streams, tipos,
+  codecs, metadata estable, capítulos y duración dentro de tolerancia.
+- Audio conserva idioma, título y todas sus disposiciones. Los subtítulos
+  embebidos conservan codec, metadata y marcas no predeterminadas; cada SRT
+  agregado aparece como una pista `subrip` diferenciada y no predeterminada.
+- `VerifiedOutput` vincula fuente, ruta, inspección, subtítulos esperados,
+  tamaño y `mtime`; un cambio durante o después de FFprobe invalida la prueba.
+- `VerificationStage` y `PublishingStage` respetan el plan completo y nunca
+  ejecutan backends ante `skip` o `needs-input`.
+- `AtomicOutputPublisher` reserva el destino sin sobrescribir y mueve el MKV
+  mediante reemplazo atómico de su propia reserva; un fallo conserva staging y
+  limpia únicamente esa reserva.
+- Se corrigió P0.6 para eliminar solo la disposición `default` de subtítulos y
+  preservar marcas como `forced` y `hearing_impaired`.
+- Un smoke test real P0.6→P0.7 confirmó remux, verificación y publicación con
+  audio intacto, un subtítulo embebido `forced`, un SRT externo seleccionable,
+  fuente y sidecar preservados, y staging retirado después de publicar.
+- 17 pruebas nuevas; la suite completa ejecuta 144 casos y mantiene los 12
+  defectos legados como `expectedFailure`.
 
 ### [ ] P0.8 Archivar automáticamente en `trash/`
 
@@ -368,7 +391,8 @@ contenedor opcional solo cuando el uso fuera del clon lo justifique.
 4. Implementar preflight y planner bajo pruebas (P0.3-P0.4). **Completado.**
 5. Implementar Whisper como fallback (P0.5). **Completado.**
 6. Implementar remux MKV, verificación y publicación (P0.6-P0.7).
-   **P0.6 completado; siguiente fase: P0.7.**
+   **Completado.**
 7. Implementar cuarentena automática y resumen transaccional (P0.8-P0.9).
+   **Siguiente fase: P0.8.**
 8. Ejecutar P1 en incrementos pequeños.
 9. Repriorizar P2 solamente con evidencia de uso.

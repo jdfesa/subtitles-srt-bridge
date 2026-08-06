@@ -32,6 +32,10 @@ python3 -m unittest discover -s tests -v
 - El remux usa runners y muxers falsos. Se comprueban mapeo total, copia de
   streams, SRT externos/generados, codificaciones, metadata, disposiciones,
   colisiones y limpieza de salidas parciales sin ejecutar FFmpeg real.
+- La verificación y publicación usan inspecciones, verificadores, snapshots y
+  reemplazos falsos. Se prueban streams, codecs, metadata, capítulos, duración,
+  disposiciones, cambios posteriores, colisiones y movimientos atómicos sin
+  FFprobe ni filesystem productivo.
 
 ## Defectos reproducidos
 

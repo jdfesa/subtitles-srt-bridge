@@ -65,20 +65,20 @@ videos/
 El contrato funcional todavía no está implementado de extremo a extremo. Ya
 existen la red de seguridad P0.1, el núcleo modular P0.2, el inventario
 read-only P0.3, el planner P0.4, la transcripción local P0.5 y el remux en
-staging P0.6, pero el comando de procesamiento actual sigue siendo un prototipo
-anterior que:
+staging P0.6, más la verificación y publicación P0.7, pero el comando de
+procesamiento actual sigue siendo un prototipo anterior que:
 
 - procesa únicamente MP4;
 - genera un SRT inglés con Whisper;
 - lo traduce al español mediante Google;
-- no conecta aún el MKV temporal con la verificación, publicación y archivado
+- no conecta aún estas etapas con el archivado y resumen transaccional
   acordados.
 
 Por tanto, el menú actual no debe interpretarse como la experiencia final ni
 usarse todavía para confiarle el movimiento de archivos importantes.
 
-Las siguientes fases conectarán la verificación, publicación y cuarentena sin
-saltar los límites ya establecidos.
+Las siguientes fases conectarán la cuarentena y el resumen del lote sin saltar
+los límites ya establecidos.
 
 ## Pruebas
 
@@ -118,7 +118,8 @@ CLI estarán implementadas en Python.
 - `local_translate_srt.py`: traducción remota del flujo anterior.
 - `subtitles_bridge/`: núcleo nuevo con modelos, rutas, discovery, validación
   SRT, FFprobe, planner, resumen previo, transcripción local y remux MKV en
-  staging; todavía no ejecuta el pipeline completo.
+  staging, verificación contractual y publicación atómica; todavía no ejecuta
+  el pipeline completo.
 - `tools/normalize_video_mp4/`: utilidad independiente importada para estudiar
   FFprobe, FFmpeg y metadata; no define el contenedor final del nuevo pipeline.
 

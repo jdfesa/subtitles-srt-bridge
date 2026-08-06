@@ -160,6 +160,28 @@ P0.6 termina con un MKV temporal no verificado. `OutputVerifier` y
 `OutputPublisher` permanecen sin implementación hasta P0.7, por lo que ninguna
 salida de esta fase llega a `output/` ni habilita movimientos a `trash/`.
 
+## Extensión P0.7: verificación y publicación
+
+P0.7 incorpora tres componentes y una prueba de dominio inmutable:
+
+| Módulo | Responsabilidad |
+| --- | --- |
+| `verification.py` | Comparar el MKV de staging con el inventario y producir `VerifiedOutput`. |
+| `publishing.py` | Respetar el plan, revalidar la identidad del archivo y autorizar la publicación. |
+| `adapters/filesystem_publish.py` | Reservar sin sobrescritura y mover atómicamente de staging a `output/`. |
+| `VerifiedOutput` | Vincular fuente, ruta, inspección, subtítulos esperados, tamaño y `mtime`. |
+
+`OutputVerifier` devuelve `VerifiedOutput` en lugar de un éxito nulo. De este
+modo `PublishingStage` no acepta una ruta arbitraria: requiere la prueba creada
+por la verificación y vuelve a comparar su snapshot antes de delegar en
+`OutputPublisher`. El verificador recibe `MediaProbe`, por lo que FFprobe sigue
+inyectable y las pruebas permanecen offline.
+
+La verificación no modifica archivos. El publicador mueve únicamente el MKV
+verificado y jamás toca la fuente o los sidecars; esos movimientos pertenecen
+a P0.8. Una salida rechazada permanece en staging para diagnóstico y nunca se
+trata como válida por mera existencia.
+
 ## Pruebas
 
 Los modelos, rutas, puertos, discovery y planner se prueban con `unittest`,
