@@ -45,7 +45,7 @@ desarrollo y la validación comienzan en macOS.
 
 ## Flujo implementado actualmente
 
-La CLI P1.2 conecta el contrato confirmado de extremo a extremo y permite
+La CLI P1.3 conecta el contrato confirmado de extremo a extremo y permite
 inspeccionarlo o reanudarlo de forma explícita:
 
 ```mermaid
@@ -70,6 +70,8 @@ flowchart LR
    cargándose solamente cuando realmente falta todo subtítulo válido.
 8. `menu.sh` es un wrapper de esa CLI; `setup.sh` localiza `.venv` y
    `requirements.txt` desde su propia ubicación.
+9. `--doctor` comprueba el runtime sin procesar un workspace; `setup.sh` valida
+   requisitos sin instalar herramientas del sistema ni descargar modelos.
 
 `process_videos.py` y `local_translate_srt.py` conservan el prototipo legado
 solo para caracterización; el menú ya no los utiliza.
@@ -239,7 +241,7 @@ en [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 ## Estado técnico observado (2026-08-06)
 
-El flujo objetivo implementa P0.1-P0.9 y P1.2. Quedan límites operativos
+El flujo objetivo implementa P0.1-P0.9 y P1.3. Quedan límites operativos
 explícitos para las siguientes fases:
 
 - el parser SRT de traducción omite o altera bloques comunes;
@@ -249,8 +251,6 @@ explícitos para las siguientes fases:
   no hay CI;
 - el prototipo de traducción legado usa Google y requiere Internet, pero no
   forma parte de la CLI principal;
-- P1.3 debe diagnosticar dependencias y dejar de asumir Homebrew durante la
-  instalación;
 - el normalizador MP4 importado es una CLI monolítica independiente y no debe
   conectarse sin pruebas de caracterización.
 

@@ -433,13 +433,50 @@ Hacer que la CLI represente correctamente el resultado de uno o varios videos.
   crea rutas ni carga un modelo inválido, y que `--resume` revalida un MKV ya
   publicado antes de archivar exactamente el video y su sidecar.
 
-### [ ] P1.3 Robustecer instalación y diagnóstico
+### [x] P1.3 Robustecer instalación y diagnóstico
 
 - Verificar Python, FFmpeg y FFprobe.
 - No asumir que Homebrew existe.
 - Explicar la descarga inicial del modelo Whisper.
 - Añadir un comando `doctor` o equivalente.
 - Validar primero macOS sin introducir dependencias exclusivas en el núcleo.
+
+**Contrato documentado antes de implementar**
+
+- `--doctor` será un modo read-only sin workspace y no se combinará con opciones
+  de procesamiento.
+- Python 3.10+, FFmpeg y FFprobe serán requisitos: una ausencia o ejecución
+  fallida devolverá código `1` con instrucciones accionables.
+- Whisper y su checkpoint local se diagnosticarán sin cargar ni descargar el
+  modelo; su ausencia será `warning` porque el fallback no se necesita cuando
+  ya existen subtítulos.
+- `setup.sh` no instalará Homebrew ni paquetes del sistema, no configurará LLVM
+  globalmente y ejecutará el doctor con el intérprete de `.venv` al finalizar.
+- La descarga inicial del modelo se mantendrá explícita, separada de setup y
+  acompañada por el comando exacto que requiere red.
+
+**Resultado**
+
+- `--doctor` ejecuta cuatro comprobaciones deterministas: versión del Python
+  activo, `ffmpeg -version`, `ffprobe -version` y resolución/checksum del modelo
+  Whisper configurado.
+- El resumen distingue `ok`, `warning` y `error`; solo un requisito obligatorio
+  fallido produce `Doctor result: failed` y código `1`.
+- La verificación de Whisper reutiliza el adaptador productivo sin cargar el
+  modelo. Un paquete o checkpoint ausente queda como advertencia con el comando
+  de instalación o precarga correspondiente.
+- `setup.sh` valida requisitos antes de crear `.venv`, controla cada fallo de
+  pip, no contiene supuestos de Homebrew/LLVM, ejecuta `--doctor` con el Python
+  del entorno y explica que la primera descarga del modelo es manual.
+- `menu.sh` propaga e informa el código de setup en lugar de presentar una
+  instalación fallida como completada.
+- Diez pruebas nuevas cubren diagnóstico, composición, CLI, checkpoint sin
+  carga y setup portable; la suite completa ejecuta 203 casos con 11
+  `expectedFailure` legados.
+- Un smoke test real desde otro `cwd` en macOS confirmó Python 3.12.11, FFmpeg
+  8.0.1 y FFprobe
+  8.0.1; Whisper ausente se informó como `warning` y el doctor terminó con
+  código `0` sin descargar ni crear archivos.
 
 ### [ ] P1.4 Definir dependencias reproducibles
 
@@ -508,5 +545,5 @@ contenedor opcional solo cuando el uso fuera del clon lo justifique.
 7. Implementar cuarentena automática y resumen transaccional (P0.8-P0.9).
    **Completado.**
 8. Ejecutar P1 en incrementos pequeños.
-   **P1.2 completado; siguiente fase: P1.3.**
+   **P1.3 completado; siguiente fase: P1.4.**
 9. Repriorizar P2 solamente con evidencia de uso.

@@ -64,7 +64,7 @@ videos/
 
 ## Estado del proyecto
 
-Las fases P0.1-P0.9 y P1.2 están completas. La CLI Python ya conecta discovery,
+Las fases P0.1-P0.9 y P1.3 están completas. La CLI Python ya conecta discovery,
 planner, transcripción fallback, remux, verificación, publicación, cuarentena,
 resumen y códigos de salida en un único flujo. `menu.sh` llama esa misma CLI y
 puede abrirse desde cualquier directorio sin confundir la raíz del repositorio
@@ -74,6 +74,11 @@ La configuración P1.2 permite ejecutar solo el preflight, elegir el audio por
 video, seleccionar modelo y dispositivo de Whisper y reanudar una salida
 existente después de volver a verificarla. Una ambigüedad se informa como
 `needs-input` sin ejecutar trabajo; no existen opciones de reemplazo o fuerza.
+
+P1.3 agrega un diagnóstico portable de Python, FFmpeg, FFprobe y el checkpoint
+local de Whisper. `setup.sh` ya no intenta instalar Homebrew, LLVM ni paquetes
+del sistema: valida requisitos, prepara `.venv` y delega el diagnóstico a la
+misma CLI.
 
 ## Ejecución
 
@@ -116,6 +121,32 @@ python3 /ruta/al/repositorio/subtitles_bridge_cli.py /ruta/a/videos --resume
 existente es una colisión; con `--resume`, solo se acepta si supera nuevamente
 el contrato completo. `trash/` nunca se fusiona, reemplaza ni vacía.
 
+## Instalación y diagnóstico
+
+`setup.sh` puede ejecutarse desde cualquier directorio:
+
+```bash
+/ruta/al/repositorio/setup.sh
+```
+
+Requiere Python 3.10 o posterior, FFmpeg y FFprobe ya disponibles en `PATH`.
+El script no instala paquetes del sistema ni descarga modelos automáticamente.
+
+El mismo diagnóstico puede ejecutarse sin modificar archivos:
+
+```bash
+python3 /ruta/al/repositorio/subtitles_bridge_cli.py --doctor
+```
+
+La falta de Python compatible, FFmpeg o FFprobe devuelve código `1`. La falta
+de Whisper o del modelo local se informa como advertencia y devuelve `0`, porque
+los videos con subtítulos existentes no necesitan transcripción. Para preparar
+el modelo predeterminado cuando se acepta usar red:
+
+```bash
+"/ruta/al/repositorio/.venv/bin/python3" -c "import whisper; whisper.load_model('small')"
+```
+
 ## Pruebas
 
 La red de seguridad inicial usa únicamente la biblioteca estándar de Python y
@@ -134,7 +165,7 @@ normal. Un `unexpected success` hace fallar la suite para evitar mantener una
 marca obsoleta.
 
 El inventario de esas reproducciones está en [`tests/README.md`](tests/README.md).
-La suite completa ejecuta 193 casos y mantiene 11 defectos del prototipo
+La suite completa ejecuta 203 casos y mantiene 11 defectos del prototipo
 legado como `expectedFailure`.
 
 ## Requisitos previstos
@@ -152,14 +183,14 @@ CLI estarán implementadas en Python.
 
 - `subtitles_bridge_cli.py`: launcher directo e independiente del `cwd`.
 - `menu.sh`: wrapper interactivo de la CLI nueva.
-- `setup.sh`: instalación del entorno resuelta desde la ubicación del script.
+- `setup.sh`: instalación portable del entorno sin modificar paquetes del sistema.
 - `process_videos.py`: orquestación monolítica del flujo anterior.
 - `local_translate_srt.py`: traducción remota del flujo anterior.
 - `subtitles_bridge/`: núcleo nuevo con modelos, rutas, discovery, validación
   SRT, FFprobe, planner, resumen previo, transcripción local y remux MKV en
   staging, verificación contractual, publicación atómica, cuarentena segura,
   orquestación inyectable, resultados detallados, reanudación verificada y
-  composición de aplicación.
+  composición de aplicación y diagnóstico portable.
 - `tools/normalize_video_mp4/`: utilidad independiente importada para estudiar
   FFprobe, FFmpeg y metadata; no define el contenedor final del nuevo pipeline.
 

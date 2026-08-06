@@ -56,8 +56,12 @@ python3 -m unittest discover -s tests -v
   el rechazo de una reanudación que no puede demostrar su subtítulo. La cadena
   SHA-256 se prueba desde discovery/transcripción hasta mux, verificación y
   archivado, incluidos cambios posteriores del sidecar.
+- El doctor usa localizadores, runners y verificadores de checkpoint falsos.
+  Se prueban versiones, herramientas ausentes o fallidas, warnings de Whisper,
+  salida estable y composición diferida sin ejecutar binarios ni acceder a red.
 - `menu.sh` y `setup.sh` se copian a directorios temporales y utilizan
-  intérpretes falsos para verificar rutas absolutas, argumentos y salida sin
+  intérpretes y herramientas multimedia falsos para verificar rutas absolutas,
+  requisitos, invocación de `--doctor`, ausencia de Homebrew y salida sin
   modificar el entorno real.
 
 ## Defectos reproducidos

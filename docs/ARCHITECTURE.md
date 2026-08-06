@@ -293,6 +293,24 @@ en la CLI, pero `WhisperSpeechRecognizer` sigue sin cargar el modelo hasta una
 transcripción real. No se incorpora una ruta de reemplazo: los adaptadores de
 publicación y archivado continúan usando reservas exclusivas sin sobrescritura.
 
+## Extensión P1.3: diagnóstico portable
+
+P1.3 agrega una frontera read-only separada del workspace:
+
+| Módulo | Responsabilidad |
+| --- | --- |
+| `diagnostics.py` | Modelar comprobaciones, ejecutar el diagnóstico inyectable, resumir estados y calcular su exit code. |
+| `adapters/whisper.py` | Exponer la resolución/checksum del checkpoint sin cargar el modelo. |
+| `bootstrap.py` | Componer el doctor con `PATH`, subprocess, Python activo y la política Whisper. |
+| `cli.py` | Seleccionar `--doctor` sin construir ni ejecutar `WorkspaceApplication`. |
+
+El servicio de diagnóstico recibe localizador de comandos, runner y verificador
+de modelo como dependencias. Las pruebas sustituyen todos ellos; no dependen de
+FFmpeg, Whisper, red o del software instalado en la máquina. `setup.sh` sigue
+siendo un wrapper de conveniencia y delega el diagnóstico final a la misma CLI,
+por lo que la lógica de salud no queda encerrada en shell ni se vuelve exclusiva
+de macOS.
+
 ## Pruebas
 
 Los modelos, rutas, puertos, discovery y planner se prueban con `unittest`,

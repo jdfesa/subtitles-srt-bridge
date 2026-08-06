@@ -637,6 +637,51 @@ intacta. El reemplazo requiere una política destructiva separada y no se
 adivina. Ninguna opción presente o futura autoriza a vaciar, fusionar o
 sobrescribir `trash/` silenciosamente.
 
+## Instalación y diagnóstico P1.3
+
+P1.3 agrega `--doctor` como modo independiente de la CLI existente:
+
+```bash
+python3 /ruta/al/repositorio/subtitles_bridge_cli.py --doctor
+```
+
+No recibe un workspace ni puede combinarse con `--preflight`, `--audio` o
+`--resume`. Es read-only: no crea el entorno virtual, no instala paquetes, no
+descarga modelos, no inspecciona videos y no modifica `output/`, `staging/` o
+`trash/`.
+
+El diagnóstico comprueba, en orden:
+
+1. que el intérprete activo sea Python 3.10 o posterior;
+2. que `ffmpeg` exista en `PATH` y responda correctamente a `-version`;
+3. que `ffprobe` exista en `PATH` y responda correctamente a `-version`;
+4. que el modelo configurado de Whisper sea un checkpoint local válido o esté
+   presente con checksum correcto en el cache utilizado por la aplicación.
+
+Python, FFmpeg y FFprobe son requisitos para ejecutar el pipeline y una falla
+produce `Doctor result: failed` con código `1`. Whisper continúa siendo un
+fallback: si el paquete o el modelo local falta, `doctor` informa `warning` y
+devuelve `0`, porque todavía pueden procesarse videos que ya poseen algún
+subtítulo válido. La salida distingue `ready`, `warnings` y `failed` y muestra
+una línea determinista por comprobación.
+
+`doctor` nunca carga el modelo en memoria ni valida el dispositivo solicitado;
+solo resuelve y verifica el checkpoint local mediante la misma política del
+adaptador productivo. Si falta el modelo, el mensaje explica que la descarga
+inicial es explícita y requiere red aceptada por el usuario:
+
+```bash
+"/ruta/al/python" -c "import whisper; whisper.load_model('small')"
+```
+
+La instalación tampoco descarga ese modelo. `setup.sh` se limita a validar
+Python/FFmpeg/FFprobe, crear `.venv`, instalar `requirements.txt` con el Python
+del entorno y ejecutar `--doctor`. No instala Homebrew ni paquetes del sistema,
+no presupone que `brew` exista y no configura LLVM de forma global. Cuando
+falta FFmpeg, muestra una instrucción genérica para el gestor de paquetes de la
+plataforma; en macOS puede mencionar `brew install ffmpeg` únicamente si
+Homebrew ya está disponible, sin ejecutarlo automáticamente.
+
 ## Red y privacidad
 
 - Whisper se ejecuta localmente y utiliza CPU/GPU del equipo.
