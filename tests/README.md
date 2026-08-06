@@ -40,6 +40,12 @@ python3 -m unittest discover -s tests -v
   Se comprueban insumos exactos, sidecars generados, colisiones, orden de
   movimientos, rollback, fallos parciales y reanudación sin repetir etapas
   costosas.
+- La orquestación usa cinco etapas falsas y artefactos tipados. Se comprueban
+  ejecución, omisiones, bloqueo previo, aislamiento de fallos por video,
+  reanudación, resultados parciales, resúmenes y códigos de salida sin invocar
+  herramientas multimedia.
+- El límite del prototipo legado se ejecuta con entradas temporales para
+  comprobar que Python y `menu.sh` no anuncien éxito ante un proceso fallido.
 
 ## Defectos reproducidos
 
@@ -50,14 +56,17 @@ sin presentar esos defectos como comportamiento correcto:
 2. Whisper escribe junto al video en lugar de utilizar staging.
 3. El scanner legado ignora entradas MKV.
 4. Sidecars vacíos se consideran trabajo terminado.
-5. Un directorio inexistente no produce estado no exitoso.
-6. El parser de traducción no admite texto multilínea.
-7. El último bloque con un salto final queda sin traducir.
-8. Los separadores entre bloques se duplican y el último bloque puede omitirse.
-9. El contenido CRLF no se procesa directamente.
-10. `--sleep` se analiza pero no se pasa a la traducción.
-11. Dos mensajes imprimen `{e}` y `{out_dir}` literalmente.
-12. Un lote con traducciones fallidas devuelve estado `0`.
+5. El parser de traducción no admite texto multilínea.
+6. El último bloque con un salto final queda sin traducir.
+7. Los separadores entre bloques se duplican y el último bloque puede omitirse.
+8. El contenido CRLF no se procesa directamente.
+9. `--sleep` se analiza pero no se pasa a la traducción.
+10. Dos mensajes imprimen `{e}` y `{out_dir}` literalmente.
+11. Un lote con traducciones fallidas devuelve estado `0`.
+
+P0.9 corrigió la propagación del directorio inexistente o vacío y convirtió su
+reproducción en una prueba de regresión normal. Quedan 11 defectos legados
+marcados como `expectedFailure`.
 
 Cuando una fase corrija o elimine el comportamiento afectado, debe quitarse
 `expectedFailure`, ajustar el caso al nuevo módulo y mantener la intención como

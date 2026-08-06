@@ -315,7 +315,7 @@ Mover los insumos consumidos únicamente después de publicar un MKV verificado.
 - 15 pruebas nuevas; la suite completa ejecuta 159 casos y mantiene los 12
   defectos legados como `expectedFailure`.
 
-### [ ] P0.9 Propagar fallos y resumir el lote
+### [x] P0.9 Propagar fallos y resumir el lote
 
 Hacer que la CLI represente correctamente el resultado de uno o varios videos.
 
@@ -327,6 +327,31 @@ Hacer que la CLI represente correctamente el resultado de uno o varios videos.
 - `failed` o `partial` produce código de salida distinto de cero.
 - Los mensajes muestran rutas y excepciones reales.
 - El menú nunca anuncia éxito si la CLI falló.
+
+**Resultado**
+
+- `BatchExecutor` conecta mediante inyección `transcribe`, `mux`, `verify`,
+  `publish` y `archive`, conserva los artefactos tipados entre etapas y no
+  vuelve a descubrir ni alterar el plan.
+- Los lotes bloqueados no ejecutan backends; en un lote ejecutable, la
+  excepción de un video queda aislada y no impide procesar los videos
+  independientes restantes.
+- `StageResult`, `VideoResult` y `BatchResult` registran etapas, rutas,
+  incidencias y estados `completed`, `skipped`, `needs-input`, `partial` o
+  `failed` con mensajes accionables.
+- Los códigos de salida son estables: `0` para completado u omitido, `1` para
+  fallo, `2` para decisiones pendientes y `3` para salida publicada con
+  archivado incompleto.
+- La reanudación del archivado exige un `PublishedOutput`; una ruta existente
+  sin prueba no evita Whisper, FFmpeg ni verificación.
+- La frontera de aplicación imprime un resumen determinista y devuelve el
+  código sin terminar el intérprete. El prototipo legado ahora propaga sus
+  fallos y `menu.sh` anuncia éxito únicamente ante código `0`.
+- 16 pruebas nuevas y una reproducción legada convertida en regresión; la
+  suite completa ejecuta 175 casos y conserva 11 defectos legados como
+  `expectedFailure`.
+- P0.9 no agrega todavía el entry point de argumentos que componga discovery,
+  planner, adaptadores y ejecutor; esa integración comienza en P1.1-P1.2.
 
 ## P1 - Operación y mantenibilidad
 
@@ -417,6 +442,7 @@ contenedor opcional solo cuando el uso fuera del clon lo justifique.
 6. Implementar remux MKV, verificación y publicación (P0.6-P0.7).
    **Completado.**
 7. Implementar cuarentena automática y resumen transaccional (P0.8-P0.9).
-   **P0.8 completado; siguiente fase: P0.9.**
+   **Completado.**
 8. Ejecutar P1 en incrementos pequeños.
+   **Siguiente fase: P1.1.**
 9. Repriorizar P2 solamente con evidencia de uso.

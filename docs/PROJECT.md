@@ -214,20 +214,23 @@ en [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 ## Estado técnico observado (2026-08-05)
 
-El repositorio se entiende, pero el código todavía implementa el flujo antiguo
-y debe considerarse un prototipo:
+El núcleo objetivo ya implementa las fases P0.1-P0.9, pero el comando y el menú
+todavía ejecutan el flujo antiguo y deben considerarse un prototipo:
 
 - Whisper instalado en `.venv` no se resuelve correctamente desde el menú;
 - el parser SRT de traducción omite o altera bloques comunes;
-- algunos fallos no llegan al código de salida y hay mensajes con variables no
+- el parser de traducción todavía contiene mensajes con variables no
   interpoladas;
 - los scripts dependen del directorio de trabajo;
 - existe una red de seguridad offline y un núcleo modular inicial, pero todavía
   no hay CI;
 - la traducción actual usa Google y requiere Internet;
-- existen inventario, planner, resumen previo, transcripción local y remux MKV
-  en staging, verificación, publicación atómica y archivado transaccional en el
-  núcleo, pero todavía no hay CLI nueva ni resumen de ejecución;
+- existen inventario, planner, transcripción local, remux MKV, verificación,
+  publicación, archivado transaccional, orquestación, resumen de ejecución y
+  códigos de salida en el núcleo, pero todavía no hay un entry point que
+  componga todo el pipeline;
+- el script legado y `menu.sh` ya propagan fallos con estado distinto de cero,
+  aunque conservan su comportamiento funcional anterior;
 - el normalizador MP4 importado es una CLI monolítica independiente y no debe
   conectarse sin pruebas de caracterización.
 

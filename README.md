@@ -62,23 +62,24 @@ videos/
 
 ## Estado del proyecto
 
-El contrato funcional todavía no está implementado de extremo a extremo. Ya
-existen la red de seguridad P0.1, el núcleo modular P0.2, el inventario
-read-only P0.3, el planner P0.4, la transcripción local P0.5 y el remux en
-staging P0.6, más la verificación y publicación P0.7 y la cuarentena P0.8 en el
-núcleo, pero el comando de procesamiento actual sigue siendo un prototipo
-anterior que:
+El contrato funcional todavía no está conectado a un único comando de extremo
+a extremo. Ya están completas las fases P0.1-P0.9: el núcleo posee inventario,
+planner, transcripción local como fallback, remux, verificación, publicación,
+cuarentena, orquestación por lote, resumen y códigos de salida. Sin embargo, el
+comando de procesamiento actual sigue siendo un prototipo anterior que:
 
 - procesa únicamente MP4;
 - genera un SRT inglés con Whisper;
 - lo traduce al español mediante Google;
-- no conecta aún estas etapas nuevas con una CLI y un resumen transaccional.
+- no compone aún estas etapas nuevas desde una CLI de argumentos.
 
 Por tanto, el menú actual no debe interpretarse como la experiencia final ni
 usarse todavía para confiarle el movimiento de archivos importantes.
+Sus errores ya se propagan y el menú solo anuncia éxito con código `0`, pero su
+flujo funcional continúa siendo el legado.
 
-La siguiente fase conectará la ejecución y el resumen del lote sin saltar los
-límites ya establecidos.
+La siguiente fase, P1.1, creará el entry point Python independiente del
+directorio actual y comenzará a conectar el núcleo ya implementado.
 
 ## Pruebas
 
@@ -118,8 +119,9 @@ CLI estarán implementadas en Python.
 - `local_translate_srt.py`: traducción remota del flujo anterior.
 - `subtitles_bridge/`: núcleo nuevo con modelos, rutas, discovery, validación
   SRT, FFprobe, planner, resumen previo, transcripción local y remux MKV en
-  staging, verificación contractual, publicación atómica y cuarentena segura;
-  todavía no ejecuta el pipeline completo.
+  staging, verificación contractual, publicación atómica, cuarentena segura,
+  orquestación inyectable y resultados detallados; todavía no posee el entry
+  point final que componga el pipeline completo.
 - `tools/normalize_video_mp4/`: utilidad independiente importada para estudiar
   FFprobe, FFmpeg y metadata; no define el contenedor final del nuevo pipeline.
 

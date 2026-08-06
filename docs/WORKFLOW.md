@@ -457,6 +457,56 @@ Cada video termina en uno de estos estados:
 El resumen distingue estos estados. Cualquier `failed` o `partial` produce un
 código de salida distinto de cero y un mensaje accionable.
 
+### Semántica de ejecución y resultado P0.9
+
+El orquestador recibe un `BatchPlan` ya construido y las cinco etapas de
+aplicación mediante inyección: `transcribe`, `mux`, `verify`, `publish` y
+`archive`. No vuelve a descubrir archivos ni modifica decisiones del planner.
+Para cada video ejecutable llama las etapas en ese orden y conserva los
+artefactos tipados que conectan una etapa con la siguiente. Una reanudación con
+salida ya publicada debe aportar su `PublishedOutput`; el orquestador no acepta
+una ruta desnuda como prueba y mantiene las cuatro etapas costosas en `skip`.
+
+Un lote con cualquier ambigüedad o incidencia de discovery no ejecuta ninguna
+etapa. Cada video queda como `needs-input` y el resumen conserva tanto las
+razones específicas de su plan como los bloqueos globales. En cambio, dentro de
+un lote completamente ejecutable, un fallo de un video no impide intentar los
+videos independientes restantes.
+
+Cada llamada produce un `StageResult`:
+
+- una decisión `run` que termina correctamente queda `completed` y registra la
+  ruta o artefacto producido;
+- una decisión `skip` queda `skipped` con la razón original del planner;
+- una decisión bloqueada queda `needs-input` sin invocar el backend;
+- una excepción queda `failed` con etapa, tipo de excepción, mensaje y rutas
+  reales; las etapas posteriores de ese video se registran como omitidas por el
+  fallo previo.
+
+El `VideoResult` final aplica reglas no ambiguas:
+
+- `completed`: `archive` terminó y existe su recibo;
+- `skipped`: todas las etapas estaban legítimamente omitidas;
+- `needs-input`: el preflight bloqueó el lote antes de ejecutar;
+- `partial`: existe un `PublishedOutput` válido pero `archive` no terminó;
+- `failed`: falló cualquier etapa anterior a la publicación, o el flujo terminó
+  sin el artefacto obligatorio de una etapa marcada `run`.
+
+El orquestador captura tanto errores esperados del proyecto como excepciones
+inesperadas en su frontera por video, nunca los convierte en éxito nulo y
+continúa con el siguiente video seguro. `BatchResult` calcula un estado global,
+conteos por estado y un código de salida estable: `0` para éxito o trabajo
+legítimamente omitido, `1` si existe algún `failed`, `2` para `needs-input` y
+`3` para `partial`. Ante estados mezclados la precedencia es `failed`, luego
+`partial` y finalmente `needs-input`. Un lote vacío sin incidencias es
+`failed`; uno sin inventarios pero con incidencias permanece `needs-input`.
+
+La frontera de aplicación imprime siempre el resumen final y devuelve ese
+código, sin llamar a `sys.exit` dentro del núcleo. El wrapper interactivo solo
+anuncia éxito cuando el proceso devuelve `0`; cualquier otro valor se muestra
+como ejecución no completada. La definición de argumentos y la independencia
+del directorio actual continúan en P1.1-P1.2.
+
 ## Red y privacidad
 
 - Whisper se ejecuta localmente y utiliza CPU/GPU del equipo.

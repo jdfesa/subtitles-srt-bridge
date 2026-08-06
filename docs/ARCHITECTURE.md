@@ -206,6 +206,32 @@ restaura en orden inverso los archivos ya movidos. Solo elimina reservas y un
 directorio vacío creados por la propia ejecución; nunca borra contenido útil,
 la salida publicada ni un destino preexistente.
 
+## Extensión P0.9: orquestación y resultados
+
+P0.9 agrega la capa de aplicación que conecta las etapas sin acoplar el dominio
+a argparse, shell o adaptadores concretos:
+
+| Módulo | Responsabilidad |
+| --- | --- |
+| `execution.py` | Ejecutar por video las cinco etapas inyectadas, aislar fallos y construir resultados. |
+| `application.py` | Imprimir el resumen final y devolver el código de salida sin terminar el intérprete. |
+| `StageResult` | Registrar estado y mensaje de una etapa planificada. |
+| `VideoResult` | Conservar estado final, salida, cuarentena y resultados de etapas. |
+| `BatchResult` | Agregar videos e incidencias, calcular conteos, estado global y exit code. |
+| `summary.py` | Renderizar planes read-only y resultados finales deterministas. |
+
+`BatchExecutor` depende de protocolos estructurales para las etapas, no de
+FFmpeg, Whisper o filesystem. Los artefactos `SubtitleArtifact`,
+`VerifiedOutput`, `PublishedOutput` y `ArchivedInputs` avanzan únicamente hacia
+la etapa siguiente. Una excepción queda contenida en el resultado del video;
+el ejecutor sigue con otros videos cuando el lote completo era ejecutable.
+
+El paquete no llama a `sys.exit`: esa decisión pertenece al entry point. La
+frontera de aplicación devuelve `BatchResult.exit_code`, lo que permite probar
+la salida textual y los estados sin procesos reales. P1.1-P1.2 aportarán la CLI
+de argumentos y configuración; P0.9 solo establece la ejecución y propagación
+correctas que esa CLI consumirá.
+
 ## Pruebas
 
 Los modelos, rutas, puertos, discovery y planner se prueban con `unittest`,
