@@ -45,7 +45,8 @@ desarrollo y la validación comienzan en macOS.
 
 ## Flujo implementado actualmente
 
-La CLI P1.1 conecta el contrato confirmado de extremo a extremo:
+La CLI P1.2 conecta el contrato confirmado de extremo a extremo y permite
+inspeccionarlo o reanudarlo de forma explícita:
 
 ```mermaid
 flowchart LR
@@ -62,7 +63,12 @@ flowchart LR
 4. La aplicación ejecuta las etapas necesarias y omite Whisper cuando ya hay
    cualquier subtítulo válido.
 5. El MKV se verifica antes de publicar y mover insumos a `trash/`.
-6. `menu.sh` es un wrapper de esa CLI; `setup.sh` localiza `.venv` y
+6. `--preflight` permite terminar después del plan, `--audio` resuelve una
+   selección por video y `--resume` vuelve a verificar una salida publicada
+   antes de autorizar únicamente el archivado pendiente.
+7. El modelo y dispositivo de Whisper son configurables, pero continúan
+   cargándose solamente cuando realmente falta todo subtítulo válido.
+8. `menu.sh` es un wrapper de esa CLI; `setup.sh` localiza `.venv` y
    `requirements.txt` desde su propia ubicación.
 
 `process_videos.py` y `local_translate_srt.py` conservan el prototipo legado
@@ -142,6 +148,20 @@ carpeta/
   se informa de forma accionable.
 - Los archivos inválidos, ambiguos o no incorporados no se mueven.
 
+### Aislamiento de las rutas administradas
+
+`output/`, `staging/` y `trash/` siempre se resuelven dentro de la carpeta de
+videos elegida, no dentro del directorio desde el que se lanzó el comando. Dos
+aplicaciones que usen esos mismos nombres en carpetas de trabajo diferentes no
+comparten rutas y, por lo tanto, no colisionan.
+
+Una colisión solo es posible si dos procesos o aplicaciones intentan ocupar la
+misma ruta final dentro del mismo workspace. Esa posibilidad es baja para el
+uso personal previsto y ya se protege con planificación previa y reservas
+exclusivas: se informa el conflicto y nunca se sobrescribe. Por ahora no se
+agrega una subcarpeta con el nombre de la aplicación, porque aumentaría la
+complejidad de las rutas sin aportar aislamiento adicional al caso normal.
+
 ## Política de generación
 
 - Con uno o más subtítulos válidos asociados: se omite Whisper y se incorporan
@@ -217,9 +237,9 @@ en [`ARCHITECTURE.md`](ARCHITECTURE.md).
 - procesamiento recursivo o formatos adicionales;
 - edición manual, OCR de subtítulos gráficos o procesamiento distribuido.
 
-## Estado técnico observado (2026-08-05)
+## Estado técnico observado (2026-08-06)
 
-El flujo objetivo implementa P0.1-P0.9 y P1.1. Quedan límites operativos
+El flujo objetivo implementa P0.1-P0.9 y P1.2. Quedan límites operativos
 explícitos para las siguientes fases:
 
 - el parser SRT de traducción omite o altera bloques comunes;
@@ -229,8 +249,6 @@ explícitos para las siguientes fases:
   no hay CI;
 - el prototipo de traducción legado usa Google y requiere Internet, pero no
   forma parte de la CLI principal;
-- P1.2 debe agregar modo solo-preflight, configuración de Whisper, selección
-  explícita de audio y semántica operable de reanudación;
 - P1.3 debe diagnosticar dependencias y dejar de asumir Homebrew durante la
   instalación;
 - el normalizador MP4 importado es una CLI monolítica independiente y no debe

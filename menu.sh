@@ -97,6 +97,8 @@ show_help() {
     echo "   - Genera uno con Whisper solo cuando no existe ninguno."
     echo "   - Crea y verifica un MKV sin recodificar los streams."
     echo "   - Mueve los insumos incorporados a trash/ al finalizar."
+    echo "   - La CLI directa ofrece --preflight, --audio y --resume."
+    echo "   - También admite --whisper-model y --whisper-device."
     echo "3. Limpiar: Borra el entorno virtual por si hubo errores."
     echo ""
     echo "Simplemente sigue las instrucciones en pantalla."

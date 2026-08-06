@@ -260,6 +260,39 @@ Los scripts shell obtienen `PROJECT_ROOT` desde `BASH_SOURCE[0]`. No cambian el
 directorio del usuario, no contienen lógica multimedia y llaman archivos
 Python, `.venv` y `requirements.txt` mediante rutas absolutas.
 
+## Extensión P1.2: configuración y reanudación verificable
+
+P1.2 amplía la frontera sin trasladar decisiones multimedia a argparse:
+
+| Módulo | Responsabilidad |
+| --- | --- |
+| `cli.py` | Parsear preflight-only, elecciones de audio y configuración diferida de Whisper. |
+| `workspace_application.py` | Resolver fuentes dentro del workspace, combinar elecciones, cortar antes del ejecutor y propagar pruebas de reanudación. |
+| `resuming.py` | Volver a verificar salidas publicadas y reconstruir `PublishedOutput` sin efectos. |
+| `transcription.py` | Compartir la detección validada de un único SRT generado entre transcripción y reanudación. |
+| `integrity.py` | Calcular el SHA-256 portable de sidecars para vincular entrada, pista publicada y archivado. |
+
+El composition root inyecta la misma política `OutputContractVerifier` tanto
+en la etapa normal como en `ExistingOutputResumer`. La reanudación no confía en
+el nombre del MKV: reconstruye los subtítulos esperados desde discovery o desde
+el único sidecar generado válido que permanezca en staging, ejecuta FFprobe y
+produce una nueva prueba tipada. El planner y `BatchExecutor` conservan su
+contrato previo; reciben respectivamente una `PlanningChoice` verificada y el
+`PublishedOutput` correspondiente.
+
+`SubtitleArtifact` puede conservar el SHA-256 calculado después de validar un
+sidecar. El adaptador de mux lo compara con los bytes actuales y lo escribe como
+metadata de la pista agregada; el verificador compara esa metadata y el
+archivador vuelve a comprobar el archivo antes del primer movimiento. Esta
+cadena permite reconstruir una prueba entre procesos sin crear un manifest
+adicional junto al único MKV de consumo normal.
+
+`--preflight` corta en `WorkspaceApplication` después de renderizar el plan, de
+modo que ningún adaptador de ejecución recibe llamadas. `WhisperConfig` se crea
+en la CLI, pero `WhisperSpeechRecognizer` sigue sin cargar el modelo hasta una
+transcripción real. No se incorpora una ruta de reemplazo: los adaptadores de
+publicación y archivado continúan usando reservas exclusivas sin sobrescritura.
+
 ## Pruebas
 
 Los modelos, rutas, puertos, discovery y planner se prueban con `unittest`,

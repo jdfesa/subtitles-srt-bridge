@@ -30,6 +30,8 @@ local para que el usuario revise y borre manualmente lo que ya no necesite.
 - Se conservan todos los audios y sus disposiciones originales.
 - Ningún subtítulo queda seleccionado por defecto.
 - Nada se mueve a `trash/` antes de verificar y publicar el MKV final.
+- Cada sidecar agregado se vincula a su pista mediante un SHA-256 interno para
+  impedir que una edición posterior se archive como si fuera el archivo usado.
 - No se sobrescriben salidas ni archivos archivados.
 
 Remultiplexar a MKV cambia el contenedor, no la calidad de audio o video. MKV
@@ -62,16 +64,16 @@ videos/
 
 ## Estado del proyecto
 
-Las fases P0.1-P0.9 y P1.1 están completas. La CLI Python ya conecta discovery,
+Las fases P0.1-P0.9 y P1.2 están completas. La CLI Python ya conecta discovery,
 planner, transcripción fallback, remux, verificación, publicación, cuarentena,
 resumen y códigos de salida en un único flujo. `menu.sh` llama esa misma CLI y
 puede abrirse desde cualquier directorio sin confundir la raíz del repositorio
 con la carpeta de videos.
 
-P1.2 agregará configuración explícita para modo solo-preflight, modelo y
-dispositivo de Whisper, selección de audio y reanudación. Hasta entonces, una
-ambigüedad se informa como `needs-input` sin ejecutar trabajo y una salida
-existente no se reutiliza como verificada por mera presencia.
+La configuración P1.2 permite ejecutar solo el preflight, elegir el audio por
+video, seleccionar modelo y dispositivo de Whisper y reanudar una salida
+existente después de volver a verificarla. Una ambigüedad se informa como
+`needs-input` sin ejecutar trabajo; no existen opciones de reemplazo o fuerza.
 
 ## Ejecución
 
@@ -92,6 +94,28 @@ preflight y, si no existe ninguna ambigüedad, ejecuta automáticamente el plan.
 Después de verificar el MKV, mueve el original y los SRT incorporados a
 `trash/`; no existe borrado definitivo ni sobrescritura.
 
+Opciones operativas:
+
+```bash
+# Inspeccionar y planificar sin modificar archivos
+python3 /ruta/al/repositorio/subtitles_bridge_cli.py /ruta/a/videos --preflight
+
+# Elegir el índice de stream de audio que se transcribirá para un video
+python3 /ruta/al/repositorio/subtitles_bridge_cli.py /ruta/a/videos \
+  --audio lesson-02.mkv=3
+
+# Configurar Whisper; solo se carga si realmente falta todo subtítulo válido
+python3 /ruta/al/repositorio/subtitles_bridge_cli.py /ruta/a/videos \
+  --whisper-model small --whisper-device mps
+
+# Verificar una salida publicada y reanudar únicamente el archivado pendiente
+python3 /ruta/al/repositorio/subtitles_bridge_cli.py /ruta/a/videos --resume
+```
+
+`--audio` puede repetirse para distintos videos. Sin `--resume`, una salida
+existente es una colisión; con `--resume`, solo se acepta si supera nuevamente
+el contrato completo. `trash/` nunca se fusiona, reemplaza ni vacía.
+
 ## Pruebas
 
 La red de seguridad inicial usa únicamente la biblioteca estándar de Python y
@@ -110,7 +134,7 @@ normal. Un `unexpected success` hace fallar la suite para evitar mantener una
 marca obsoleta.
 
 El inventario de esas reproducciones está en [`tests/README.md`](tests/README.md).
-La suite completa ejecuta 182 casos y mantiene 11 defectos del prototipo
+La suite completa ejecuta 193 casos y mantiene 11 defectos del prototipo
 legado como `expectedFailure`.
 
 ## Requisitos previstos
@@ -134,7 +158,8 @@ CLI estarán implementadas en Python.
 - `subtitles_bridge/`: núcleo nuevo con modelos, rutas, discovery, validación
   SRT, FFprobe, planner, resumen previo, transcripción local y remux MKV en
   staging, verificación contractual, publicación atómica, cuarentena segura,
-  orquestación inyectable, resultados detallados y composición de aplicación.
+  orquestación inyectable, resultados detallados, reanudación verificada y
+  composición de aplicación.
 - `tools/normalize_video_mp4/`: utilidad independiente importada para estudiar
   FFprobe, FFmpeg y metadata; no define el contenedor final del nuevo pipeline.
 

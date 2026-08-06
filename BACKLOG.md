@@ -385,13 +385,53 @@ Hacer que la CLI represente correctamente el resultado de uno o varios videos.
 - Las opciones de preflight-only, audio, modelo, dispositivo y reanudación
   permanecen deliberadamente en P1.2.
 
-### [ ] P1.2 Definir configuración mínima de la CLI
+### [x] P1.2 Definir configuración mínima de la CLI
 
 - Ruta de entrada y modo de preflight.
 - Modelo y dispositivo de Whisper cuando se necesiten.
 - Selección de audio ante múltiples candidatos.
 - Semántica por etapa para reanudación o reemplazo.
 - Ninguna opción de fuerza puede sobrescribir silenciosamente `trash/`.
+
+**Contrato documentado antes de implementar**
+
+- `--preflight` será read-only y devolverá `0` si el plan está listo, `2` si
+  requiere decisiones y `1` ante fallo fatal o lote vacío.
+- `--audio SOURCE=STREAM_INDEX` resolverá elecciones por video sin modificar
+  la conservación de todos los streams de audio.
+- `--whisper-model` y `--whisper-device` configurarán el backend diferido solo
+  cuando la transcripción sea necesaria.
+- `--resume` volverá a verificar cada salida existente y solo después aportará
+  la prueba que permite ejecutar el archivado pendiente.
+- P1.2 no agregará reemplazo ni fuerza: una salida inválida o cualquier ruta
+  existente dentro de `trash/` seguirá intacta y bloqueará la operación.
+
+**Resultado**
+
+- La CLI acepta `--preflight`, `--audio SOURCE=STREAM_INDEX` repetible,
+  `--whisper-model`, `--whisper-device` y `--resume`; no incorpora `--force` ni
+  `--replace`.
+- El modo solo-preflight conserva los códigos `0`, `1` y `2` documentados y se
+  detiene antes del ejecutor, sin crear `output/`, `staging/` o `trash/`.
+- Las elecciones de audio se resuelven contra fuentes directas del workspace,
+  rechazan duplicados o índices inexistentes y no cambian la conservación de
+  todos los streams.
+- `WhisperConfig` llega al adaptador desde el composition root, pero el modelo
+  continúa sin cargarse si el plan no ejecuta transcripción.
+- `ExistingOutputResumer` vuelve a verificar el contrato completo, reconstruye
+  una prueba `PublishedOutput` y permite que el ejecutor omita transcripción,
+  remux, verificación de etapa y publicación para ejecutar solo el archivado.
+- Cada sidecar validado se vincula con su pista mediante SHA-256 interno; mux,
+  verificación, reanudación y archivado rechazan cambios posteriores, sin crear
+  un manifest externo ni sobrescribir archivos.
+- El descubrimiento de un SRT generado reanudable es compartido con la etapa de
+  transcripción y conserva metadata estable entre procesos.
+- Once pruebas nuevas cubren opciones, códigos, audio, integridad y
+  reconstrucción de pruebas; la suite completa ejecuta 193 casos con 11
+  `expectedFailure` legados.
+- Un smoke test temporal con FFmpeg/FFprobe reales verificó que preflight no
+  crea rutas ni carga un modelo inválido, y que `--resume` revalida un MKV ya
+  publicado antes de archivar exactamente el video y su sidecar.
 
 ### [ ] P1.3 Robustecer instalación y diagnóstico
 
@@ -468,5 +508,5 @@ contenedor opcional solo cuando el uso fuera del clon lo justifique.
 7. Implementar cuarentena automática y resumen transaccional (P0.8-P0.9).
    **Completado.**
 8. Ejecutar P1 en incrementos pequeños.
-   **P1.1 completado; siguiente fase: P1.2.**
+   **P1.2 completado; siguiente fase: P1.3.**
 9. Repriorizar P2 solamente con evidencia de uso.

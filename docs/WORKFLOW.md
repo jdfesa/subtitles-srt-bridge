@@ -547,6 +547,96 @@ propia ubicación y llama la misma CLI con rutas absolutas. `setup.sh` aplica la
 misma regla para crear `.venv` e instalar `requirements.txt`, aunque se invoque
 desde otro directorio.
 
+## Configuración operativa P1.2
+
+P1.2 mantiene una única ruta posicional y agrega opciones explícitas sin
+cambiar el comportamiento seguro predeterminado:
+
+```text
+subtitles-bridge [DIRECTORY]
+  [--preflight]
+  [--audio SOURCE=STREAM_INDEX]...
+  [--whisper-model MODEL_OR_PATH]
+  [--whisper-device DEVICE]
+  [--resume]
+```
+
+`DIRECTORY` continúa siendo opcional y, si se omite, representa el `cwd` del
+usuario. Las rutas administradas se derivan siempre de ese workspace:
+`output/`, `staging/` y `trash/` no se comparten con otra carpeta solo porque
+otra aplicación use los mismos nombres. No se agrega un namespace extra; las
+reservas exclusivas ya convierten cualquier coincidencia de la ruta final
+exacta en un fallo seguro y visible.
+
+### Modo `--preflight`
+
+`--preflight` ejecuta validación del workspace, discovery, resolución de las
+opciones explícitas y planificación, imprime el mismo plan de una ejecución
+normal y termina sin entregar el lote al ejecutor. Por lo tanto no crea rutas
+administradas, no invoca Whisper o FFmpeg y no publica, mueve ni sobrescribe
+archivos. FFprobe sí puede ejecutarse porque la inspección read-only es parte
+del preflight; con `--resume` también vuelve a inspeccionar la salida existente.
+
+El resultado solo-preflight usa códigos estables: `0` cuando existe al menos un
+video y el plan completo está listo, `2` cuando hay decisiones
+`needs-input`, y `1` ante un error fatal o una carpeta sin videos. La salida
+incluye `Preflight result` y `Exit code` para que pueda usarse en automatización.
+
+### Selección explícita de audio
+
+`--audio SOURCE=STREAM_INDEX` puede repetirse una vez por video. `SOURCE` es el
+nombre del archivo directamente dentro del workspace —por ejemplo
+`lesson-02.mkv`— o su ruta absoluta; el índice es el número de stream mostrado
+por el preflight, no la posición ordinal entre los audios.
+
+La selección se valida contra el video descubierto. Un video desconocido, una
+selección duplicada, un índice negativo o un stream inexistente produce un
+error accionable sin efectos. La opción solo influye cuando no hay ningún
+subtítulo válido y Whisper es necesario; todos los audios se conservan aunque
+se transcriba uno solo.
+
+### Configuración diferida de Whisper
+
+`--whisper-model` acepta el nombre de un modelo disponible en el cache local o
+la ruta de un checkpoint local; su valor predeterminado sigue siendo `small`.
+`--whisper-device` se entrega explícitamente al backend —por ejemplo `cpu`,
+`cuda` o `mps`— y, si se omite, Whisper elige el dispositivo.
+
+Estas opciones no validan ni cargan el modelo durante el preflight. Tampoco lo
+cargan en una ejecución que reutiliza subtítulos. La ausencia del modelo o un
+dispositivo inválido solo puede fallar al comenzar una transcripción realmente
+planificada, sin iniciar una descarga automática.
+
+### Reanudación y reemplazo
+
+`--resume` es explícito y se aplica por video. Cuando discovery encuentra
+`output/<base>.subtitled.mkv`, la aplicación vuelve a verificar ese archivo
+contra el inventario actual y contra los subtítulos externos, embebidos o
+generados que debían integrarse. Solo una verificación completa produce una
+nueva prueba `PublishedOutput`; entonces el plan marca `transcribe`, `mux`,
+`verify` y `publish` como `skip` y ejecuta únicamente `archive`.
+
+Cada sidecar externo o generado incorporado lleva en la metadata interna de su
+pista un SHA-256 de los bytes validados. El mux rechaza un sidecar que cambió
+después de discovery, la verificación exige que la metadata coincida y el
+archivado vuelve a comprobar el archivo actual. Durante `--resume`, el hash del
+sidecar que todavía está junto a la fuente o en staging debe coincidir con el
+hash de la pista publicada. Así una edición posterior no puede autorizar que se
+mueva como si fuera exactamente el archivo integrado. Una salida anterior que
+no contiene esta prueba se deja intacta y no es reanudable automáticamente.
+
+Si no existe una salida para un video, `--resume` no inventa una: ese video se
+planifica normalmente. Si la salida existente no cumple el contrato, falta el
+sidecar necesario para demostrarla, su hash ya no coincide o ya existe
+`trash/<base>/`, la reanudación falla sin modificar nada. En particular, una
+ruta desnuda o el nombre esperado nunca se aceptan como prueba.
+
+P1.2 no ofrece `--force` ni `--replace`. Sin `--resume`, una salida existente
+sigue siendo una colisión; con `--resume`, una salida inválida también se deja
+intacta. El reemplazo requiere una política destructiva separada y no se
+adivina. Ninguna opción presente o futura autoriza a vaciar, fusionar o
+sobrescribir `trash/` silenciosamente.
+
 ## Red y privacidad
 
 - Whisper se ejecuta localmente y utiliza CPU/GPU del equipo.
