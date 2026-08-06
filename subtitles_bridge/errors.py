@@ -71,3 +71,7 @@ class ArchivingCollisionError(ArchivingError):
 
 class ArchivingPartialError(ArchivingError):
     """A published output is valid but its input quarantine is incomplete."""
+
+
+class ExecutionError(SubtitleBridgeError):
+    """A planned stage returned no usable artifact or inconsistent state."""

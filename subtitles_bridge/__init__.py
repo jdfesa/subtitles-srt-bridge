@@ -3,6 +3,7 @@
 from .models import (
     ArchivedInputs,
     ArtifactState,
+    BatchResult,
     BatchPlan,
     DiscoveryIssue,
     DiscoveryIssueKind,
@@ -18,6 +19,7 @@ from .models import (
     SpeechSegment,
     SpeechTranscript,
     StageAction,
+    StageResult,
     StreamKind,
     SubtitleArtifact,
     SubtitleOrigin,
@@ -28,10 +30,13 @@ from .models import (
     VideoResult,
 )
 from .paths import WorkspacePaths
+from .execution import BatchExecutor
 
 __all__ = [
     "ArchivedInputs",
     "ArtifactState",
+    "BatchResult",
+    "BatchExecutor",
     "BatchPlan",
     "DiscoveryIssue",
     "DiscoveryIssueKind",
@@ -47,6 +52,7 @@ __all__ = [
     "SpeechSegment",
     "SpeechTranscript",
     "StageAction",
+    "StageResult",
     "StreamKind",
     "SubtitleArtifact",
     "SubtitleOrigin",

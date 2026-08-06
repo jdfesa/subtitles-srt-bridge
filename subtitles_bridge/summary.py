@@ -4,10 +4,13 @@ from __future__ import annotations
 
 from .models import (
     BatchPlan,
+    BatchResult,
     MediaStream,
+    ResultStatus,
     SubtitleArtifact,
     SubtitleOrigin,
     VideoPlan,
+    VideoResult,
 )
 
 
@@ -47,7 +50,10 @@ def format_video_plan(plan: VideoPlan) -> str:
 
     if inventory.audio_streams:
         lines.append(
-            "Audio: " + ", ".join(_format_audio(stream) for stream in inventory.audio_streams)
+            "Audio: "
+            + ", ".join(
+                _format_audio(stream) for stream in inventory.audio_streams
+            )
         )
     else:
         lines.append("Audio: none")
@@ -91,4 +97,54 @@ def format_batch_plan(plan: BatchPlan) -> str:
         )
     for video_plan in plan.videos:
         lines.extend(("", format_video_plan(video_plan)))
+    return "\n".join(lines)
+
+
+def format_video_result(result: VideoResult) -> str:
+    lines = [
+        f"[{result.status.value}] Video: {result.source}",
+        f"Message: {result.message}",
+    ]
+    if result.output_path is not None:
+        lines.append(f"Output: {result.output_path}")
+    if result.trash_path is not None:
+        lines.append(f"Trash: {result.trash_path}")
+    lines.append("Stages:")
+    if result.stages:
+        lines.extend(
+            f"  [{stage.status.value}] {stage.stage.value}: {stage.message}"
+            for stage in result.stages
+        )
+    else:
+        lines.append("  - none")
+    return "\n".join(lines)
+
+
+def format_batch_result(result: BatchResult) -> str:
+    statuses = (
+        ResultStatus.COMPLETED,
+        ResultStatus.SKIPPED,
+        ResultStatus.NEEDS_INPUT,
+        ResultStatus.PARTIAL,
+        ResultStatus.FAILED,
+    )
+    counts = ", ".join(
+        f"{status.value}={result.count(status)}" for status in statuses
+    )
+    lines = [
+        f"Batch result: {result.status.value}",
+        f"Videos: {len(result.videos)}",
+        f"Exit code: {result.exit_code}",
+        f"Counts: {counts}",
+    ]
+    if result.message:
+        lines.append(f"Message: {result.message}")
+    if result.issues:
+        lines.append("Discovery issues:")
+        lines.extend(
+            f"  [{issue.kind.value}] {issue.path}: {issue.message}"
+            for issue in result.issues
+        )
+    for video in result.videos:
+        lines.extend(("", format_video_result(video)))
     return "\n".join(lines)

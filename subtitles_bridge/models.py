@@ -420,11 +420,75 @@ class PlanningChoice:
 
 
 @dataclass(frozen=True, slots=True)
+class StageResult:
+    stage: PipelineStage
+    status: ResultStatus
+    message: str
+
+    def __post_init__(self) -> None:
+        if self.status is ResultStatus.PARTIAL:
+            raise ValueError("A single stage cannot have partial status")
+        if not self.message.strip():
+            raise ValueError("Stage results require a message")
+
+
+@dataclass(frozen=True, slots=True)
 class VideoResult:
     source: Path
     status: ResultStatus
     message: str = ""
     output_path: Path | None = None
+    trash_path: Path | None = None
+    stages: tuple[StageResult, ...] = ()
+
+    def __post_init__(self) -> None:
+        stage_names = [stage.stage for stage in self.stages]
+        if len(stage_names) != len(set(stage_names)):
+            raise ValueError("A video result can contain each stage only once")
+        if self.status is ResultStatus.PARTIAL and self.output_path is None:
+            raise ValueError("A partial video result requires a published output")
+
+
+@dataclass(frozen=True, slots=True)
+class BatchResult:
+    videos: tuple[VideoResult, ...]
+    issues: tuple[DiscoveryIssue, ...] = ()
+    message: str = ""
+
+    def __post_init__(self) -> None:
+        sources = [
+            str(video.source.resolve()).casefold() for video in self.videos
+        ]
+        if len(sources) != len(set(sources)):
+            raise ValueError("Batch results cannot contain duplicate videos")
+
+    @property
+    def status(self) -> ResultStatus:
+        statuses = {video.status for video in self.videos}
+        if ResultStatus.FAILED in statuses:
+            return ResultStatus.FAILED
+        if ResultStatus.PARTIAL in statuses:
+            return ResultStatus.PARTIAL
+        if self.issues or ResultStatus.NEEDS_INPUT in statuses:
+            return ResultStatus.NEEDS_INPUT
+        if not self.videos:
+            return ResultStatus.FAILED
+        if statuses == {ResultStatus.SKIPPED}:
+            return ResultStatus.SKIPPED
+        return ResultStatus.COMPLETED
+
+    @property
+    def exit_code(self) -> int:
+        return {
+            ResultStatus.COMPLETED: 0,
+            ResultStatus.SKIPPED: 0,
+            ResultStatus.FAILED: 1,
+            ResultStatus.NEEDS_INPUT: 2,
+            ResultStatus.PARTIAL: 3,
+        }[self.status]
+
+    def count(self, status: ResultStatus) -> int:
+        return sum(video.status is status for video in self.videos)
 
 
 @dataclass(frozen=True, slots=True)

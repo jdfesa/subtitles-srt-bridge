@@ -5,6 +5,7 @@ import unittest
 from subtitles_bridge.models import (
     ArchivedInputs,
     ArtifactState,
+    BatchResult,
     DiscoveryIssue,
     DiscoveryIssueKind,
     DiscoveryResult,
@@ -15,6 +16,7 @@ from subtitles_bridge.models import (
     PublishedOutput,
     ResultStatus,
     StageAction,
+    StageResult,
     StreamKind,
     SubtitleArtifact,
     SubtitleOrigin,
@@ -261,6 +263,61 @@ class VideoResultTests(unittest.TestCase):
 
         self.assertEqual(result.status.value, "partial")
         self.assertIsNotNone(result.output_path)
+
+    def test_stage_and_batch_results_enforce_status_contract(self):
+        completed_stage = StageResult(
+            PipelineStage.MUX,
+            ResultStatus.COMPLETED,
+            "Created staged output",
+        )
+        completed = VideoResult(
+            Path("lesson.mp4"),
+            ResultStatus.COMPLETED,
+            "Completed",
+            stages=(completed_stage,),
+        )
+        skipped = VideoResult(
+            Path("other.mp4"),
+            ResultStatus.SKIPPED,
+            "Already complete",
+        )
+        result = BatchResult((completed, skipped))
+
+        self.assertEqual(result.status, ResultStatus.COMPLETED)
+        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.count(ResultStatus.SKIPPED), 1)
+
+        with self.assertRaisesRegex(ValueError, "cannot have partial"):
+            StageResult(PipelineStage.ARCHIVE, ResultStatus.PARTIAL, "Partial")
+        with self.assertRaisesRegex(ValueError, "requires a published"):
+            VideoResult(Path("lesson.mp4"), ResultStatus.PARTIAL, "Partial")
+
+    def test_batch_result_uses_failure_partial_and_input_precedence(self):
+        failed = VideoResult(
+            Path("failed.mp4"),
+            ResultStatus.FAILED,
+            "Mux failed",
+        )
+        partial = VideoResult(
+            Path("partial.mp4"),
+            ResultStatus.PARTIAL,
+            "Archive failed",
+            Path("output/partial.mkv"),
+        )
+        needs_input = VideoResult(
+            Path("blocked.mp4"),
+            ResultStatus.NEEDS_INPUT,
+            "Select audio",
+        )
+
+        self.assertEqual(
+            BatchResult((failed, partial, needs_input)).status,
+            ResultStatus.FAILED,
+        )
+        self.assertEqual(BatchResult((failed, partial)).exit_code, 1)
+        self.assertEqual(BatchResult((partial, needs_input)).exit_code, 3)
+        self.assertEqual(BatchResult((needs_input,)).exit_code, 2)
+        self.assertEqual(BatchResult(()).exit_code, 1)
 
 
 class DiscoveryResultTests(unittest.TestCase):
