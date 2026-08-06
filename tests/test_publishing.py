@@ -13,6 +13,7 @@ from subtitles_bridge.models import (
     MediaInspection,
     MediaStream,
     PlanningChoice,
+    PublishedOutput,
     StreamKind,
     SubtitleArtifact,
     SubtitleOrigin,
@@ -91,15 +92,17 @@ class PublishingStageTests(unittest.TestCase):
         _, source, _, paths, batch, proof = self.make_workspace()
         publisher = RecordingPublisher()
 
-        final = PublishingStage(publisher).execute(
+        published = PublishingStage(publisher).execute(
             batch,
             source,
             paths,
             proof,
         )
 
-        self.assertEqual(final, paths.output_for(source))
-        self.assertEqual(final.read_bytes(), b"verified-mkv")
+        self.assertIsInstance(published, PublishedOutput)
+        self.assertEqual(published.final_path, paths.output_for(source))
+        self.assertEqual(published.final_path.read_bytes(), b"verified-mkv")
+        self.assertEqual(published.expected_subtitles, proof.expected_subtitles)
         self.assertFalse(proof.staged_path.exists())
         self.assertEqual(
             publisher.calls,

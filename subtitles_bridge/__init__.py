@@ -1,6 +1,7 @@
 """Portable core for the Subtitles Bridge workflow."""
 
 from .models import (
+    ArchivedInputs,
     ArtifactState,
     BatchPlan,
     DiscoveryIssue,
@@ -12,6 +13,7 @@ from .models import (
     PipelineStage,
     PlanDecision,
     PlanningChoice,
+    PublishedOutput,
     ResultStatus,
     SpeechSegment,
     SpeechTranscript,
@@ -28,6 +30,7 @@ from .models import (
 from .paths import WorkspacePaths
 
 __all__ = [
+    "ArchivedInputs",
     "ArtifactState",
     "BatchPlan",
     "DiscoveryIssue",
@@ -39,6 +42,7 @@ __all__ = [
     "PipelineStage",
     "PlanDecision",
     "PlanningChoice",
+    "PublishedOutput",
     "ResultStatus",
     "SpeechSegment",
     "SpeechTranscript",

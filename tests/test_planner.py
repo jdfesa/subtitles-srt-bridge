@@ -286,6 +286,21 @@ class PlannerTests(unittest.TestCase):
             StageAction.SKIP,
         )
 
+    def test_blocks_sidecars_that_flatten_to_the_same_trash_name(self):
+        root, paths, (source,) = self.make_workspace()
+        first = external(root / "sub" / "lesson.en.srt")
+        second = external(root / "sub_en" / "Lesson.en.srt")
+        inventory = self.inventory(
+            source,
+            audios=(audio(1),),
+            subtitles=(first, second),
+        )
+
+        _, plan = self.plan_one(inventory, paths)
+
+        self.assertTrue(plan.has_needs_input)
+        self.assertIn("share a destination filename", plan.decisions[0].reason)
+
     def test_blocks_cross_video_output_and_trash_collisions_without_writes(self):
         root, paths, sources = self.make_workspace(("Lesson.mp4", "lesson.mkv"))
         inventories = tuple(

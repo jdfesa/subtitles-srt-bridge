@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 from .models import (
+    ArchivedInputs,
     MediaInspection,
     MediaStream,
     SpeechTranscript,
@@ -84,4 +85,4 @@ class InputArchiver(Protocol):
         source: Path,
         sidecars: Sequence[Path],
         destination: Path,
-    ) -> None: ...
+    ) -> ArchivedInputs: ...

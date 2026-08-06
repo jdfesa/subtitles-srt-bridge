@@ -59,3 +59,15 @@ class PublicationError(SubtitleBridgeError):
 
 class PublicationCollisionError(PublicationError):
     """The final output route is occupied and cannot be overwritten."""
+
+
+class ArchivingError(SubtitleBridgeError):
+    """Published media inputs could not be quarantined safely."""
+
+
+class ArchivingCollisionError(ArchivingError):
+    """A quarantine route is occupied and cannot be overwritten."""
+
+
+class ArchivingPartialError(ArchivingError):
+    """A published output is valid but its input quarantine is incomplete."""

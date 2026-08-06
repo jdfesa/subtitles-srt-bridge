@@ -8,6 +8,7 @@ from .errors import MuxingError, PublicationCollisionError, PublicationError
 from .models import (
     BatchPlan,
     PipelineStage,
+    PublishedOutput,
     StageAction,
     VerifiedOutput,
 )
@@ -26,7 +27,7 @@ class PublishingStage:
         source: Path,
         paths: WorkspacePaths,
         verified_output: VerifiedOutput | None,
-    ) -> Path | None:
+    ) -> PublishedOutput | None:
         if not batch_plan.is_executable:
             raise PublicationError(
                 "Publication batch is not executable until all issues are resolved"
@@ -103,7 +104,14 @@ class PublishingStage:
             raise PublicationError(
                 f"Published output no longer matches verification proof: {final_output}"
             )
-        return final_output
+        return PublishedOutput(
+            source=verified_output.source,
+            final_path=final_output,
+            inspection=verified_output.inspection,
+            expected_subtitles=verified_output.expected_subtitles,
+            size_bytes=final_stat.st_size,
+            modified_time_ns=final_stat.st_mtime_ns,
+        )
 
     @staticmethod
     def _require_current_snapshot(verified_output: VerifiedOutput) -> None:

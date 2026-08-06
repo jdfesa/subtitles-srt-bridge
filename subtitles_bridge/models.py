@@ -177,7 +177,9 @@ class SubtitleArtifact:
 
         if self.origin is SubtitleOrigin.EMBEDDED:
             if self.stream_index is None or self.stream_index < 0:
-                raise ValueError("Embedded subtitles require a non-negative stream index")
+                raise ValueError(
+                    "Embedded subtitles require a non-negative stream index"
+                )
             if self.path is not None:
                 raise ValueError("Embedded subtitles cannot reference an external path")
             return
@@ -185,7 +187,9 @@ class SubtitleArtifact:
         if self.path is None:
             raise ValueError("External and generated subtitles require a path")
         if self.stream_index is not None:
-            raise ValueError("External and generated subtitles cannot use a stream index")
+            raise ValueError(
+                "External and generated subtitles cannot use a stream index"
+            )
         if self.validation is not None:
             if self.state is ArtifactState.VALID and not self.validation.is_valid:
                 raise ValueError("Subtitle state must match its validation result")
@@ -212,11 +216,15 @@ class VideoInventory:
 
     @property
     def video_streams(self) -> tuple[MediaStream, ...]:
-        return tuple(stream for stream in self.streams if stream.kind is StreamKind.VIDEO)
+        return tuple(
+            stream for stream in self.streams if stream.kind is StreamKind.VIDEO
+        )
 
     @property
     def audio_streams(self) -> tuple[MediaStream, ...]:
-        return tuple(stream for stream in self.streams if stream.kind is StreamKind.AUDIO)
+        return tuple(
+            stream for stream in self.streams if stream.kind is StreamKind.AUDIO
+        )
 
     @property
     def embedded_subtitles(self) -> tuple[SubtitleArtifact, ...]:
@@ -267,6 +275,68 @@ class VerifiedOutput:
             for subtitle in self.expected_subtitles
         ):
             raise ValueError("Verified output can reference only valid subtitles")
+
+
+@dataclass(frozen=True, slots=True)
+class PublishedOutput:
+    source: Path
+    final_path: Path
+    inspection: MediaInspection
+    expected_subtitles: tuple[SubtitleArtifact, ...]
+    size_bytes: int
+    modified_time_ns: int
+
+    def __post_init__(self) -> None:
+        if self.source.resolve() == self.final_path.resolve():
+            raise ValueError("Published output cannot replace its source")
+        if self.final_path.suffix.casefold() != ".mkv":
+            raise ValueError("Published output must use the .mkv extension")
+        if self.size_bytes <= 0:
+            raise ValueError("Published output size must be positive")
+        if self.modified_time_ns < 0:
+            raise ValueError("Published output mtime cannot be negative")
+        if not any(
+            stream.kind is StreamKind.VIDEO
+            for stream in self.inspection.streams
+        ):
+            raise ValueError("Published output must contain a video stream")
+        if any(
+            subtitle.state is not ArtifactState.VALID
+            for subtitle in self.expected_subtitles
+        ):
+            raise ValueError("Published output can reference only valid subtitles")
+
+
+@dataclass(frozen=True, slots=True)
+class ArchivedInputs:
+    source: Path
+    destination: Path
+    original_paths: tuple[Path, ...]
+    archived_paths: tuple[Path, ...]
+
+    def __post_init__(self) -> None:
+        if not self.original_paths:
+            raise ValueError("Archived inputs require at least the source")
+        if self.original_paths[0].resolve() != self.source.resolve():
+            raise ValueError("Archived inputs must list the source first")
+        if len(self.original_paths) != len(self.archived_paths):
+            raise ValueError("Archived input and destination counts must match")
+        original_keys = [str(path.resolve()).casefold() for path in self.original_paths]
+        archived_keys = [str(path.resolve()).casefold() for path in self.archived_paths]
+        if len(original_keys) != len(set(original_keys)):
+            raise ValueError("Archived inputs cannot contain duplicate sources")
+        if len(archived_keys) != len(set(archived_keys)):
+            raise ValueError("Archived inputs cannot contain duplicate destinations")
+        destination = self.destination.resolve()
+        for original, archived in zip(
+            self.original_paths,
+            self.archived_paths,
+            strict=True,
+        ):
+            if archived.resolve().parent != destination:
+                raise ValueError("Archived files must be inside the destination")
+            if archived.name != original.name:
+                raise ValueError("Archived files must preserve their names")
 
 
 @dataclass(frozen=True, slots=True)

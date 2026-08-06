@@ -42,7 +42,7 @@ def planned_subtitles_for(
             raise MuxingError(
                 "Muxing requires the generated subtitle from transcription"
             )
-        _validate_generated_subtitle(plan, paths, generated_subtitle)
+        validate_generated_subtitle(plan, paths, generated_subtitle)
         return (generated_subtitle,)
 
     if transcription.action is not StageAction.SKIP:
@@ -52,7 +52,7 @@ def planned_subtitles_for(
     return plan.selected_subtitles
 
 
-def _validate_generated_subtitle(
+def validate_generated_subtitle(
     plan: VideoPlan,
     paths: WorkspacePaths,
     subtitle: SubtitleArtifact,

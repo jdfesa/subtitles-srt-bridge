@@ -3,6 +3,7 @@ from pathlib import Path
 import unittest
 
 from subtitles_bridge.models import (
+    ArchivedInputs,
     ArtifactState,
     DiscoveryIssue,
     DiscoveryIssueKind,
@@ -11,6 +12,7 @@ from subtitles_bridge.models import (
     MediaStream,
     PipelineStage,
     PlanDecision,
+    PublishedOutput,
     ResultStatus,
     StageAction,
     StreamKind,
@@ -170,6 +172,41 @@ class VerifiedOutputTests(unittest.TestCase):
                 (),
                 0,
                 123,
+            )
+
+    def test_published_and_archived_proofs_preserve_routes(self):
+        inspection = MediaInspection(
+            (MediaStream(0, StreamKind.VIDEO, "h264"),)
+        )
+        published = PublishedOutput(
+            Path("lesson.mp4"),
+            Path("output/lesson.subtitled.mkv"),
+            inspection,
+            (),
+            1024,
+            123,
+        )
+        archived = ArchivedInputs(
+            Path("lesson.mp4"),
+            Path("trash/lesson"),
+            (Path("lesson.mp4"), Path("lesson.en.srt")),
+            (
+                Path("trash/lesson/lesson.mp4"),
+                Path("trash/lesson/lesson.en.srt"),
+            ),
+        )
+
+        self.assertEqual(published.final_path.suffix, ".mkv")
+        self.assertEqual(archived.archived_paths[1].name, "lesson.en.srt")
+
+        with self.assertRaises(FrozenInstanceError):
+            published.size_bytes = 0
+        with self.assertRaisesRegex(ValueError, "preserve their names"):
+            ArchivedInputs(
+                Path("lesson.mp4"),
+                Path("trash/lesson"),
+                (Path("lesson.mp4"),),
+                (Path("trash/lesson/renamed.mp4"),),
             )
 
 

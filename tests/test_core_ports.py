@@ -2,6 +2,7 @@ from pathlib import Path
 import unittest
 
 from subtitles_bridge.models import (
+    ArchivedInputs,
     ArtifactState,
     MediaInspection,
     MediaStream,
@@ -76,7 +77,13 @@ class FakeAdapters:
 
     class Archiver:
         def archive(self, source, sidecars, destination):
-            return None
+            originals = (source, *sidecars)
+            return ArchivedInputs(
+                source,
+                destination,
+                originals,
+                tuple(destination / path.name for path in originals),
+            )
 
 
 class PortBoundaryTests(unittest.TestCase):

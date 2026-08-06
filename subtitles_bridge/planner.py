@@ -48,6 +48,24 @@ def _join_reasons(reasons: Iterable[str]) -> str:
     return "; ".join(dict.fromkeys(reasons))
 
 
+def _archive_name_collision(inventory: VideoInventory) -> str | None:
+    paths = [inventory.source]
+    paths.extend(
+        subtitle.path
+        for subtitle in inventory.valid_subtitles
+        if subtitle.origin is SubtitleOrigin.EXTERNAL
+        and subtitle.path is not None
+    )
+    groups: dict[str, list[Path]] = {}
+    for path in paths:
+        groups.setdefault(path.name.casefold(), []).append(path)
+    for colliding in groups.values():
+        if len(colliding) > 1:
+            rendered = ", ".join(str(path) for path in colliding)
+            return f"Archive inputs share a destination filename: {rendered}"
+    return None
+
+
 def _select_audio(
     inventory: VideoInventory,
     requested_index: int | None,
@@ -93,6 +111,9 @@ class VideoPlanner:
             if subtitle.state is ArtifactState.AMBIGUOUS
         ]
         all_blockers = list(blockers) + ambiguity_reasons
+        archive_collision = _archive_name_collision(inventory)
+        if archive_collision is not None:
+            all_blockers.append(archive_collision)
 
         verified_output, verification_error = self._verified_output(
             inventory,
