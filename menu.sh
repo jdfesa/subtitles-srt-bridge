@@ -55,9 +55,12 @@ run_process() {
     fi
 
     echo "Iniciando proceso en: $target_dir"
-    $VENV_PYTHON process_videos.py "$target_dir"
-    
-    echo -e "\n${GREEN}Proceso finalizado.${NC}"
+    if "$VENV_PYTHON" process_videos.py "$target_dir"; then
+        echo -e "\n${GREEN}✅ Proceso finalizado correctamente.${NC}"
+    else
+        process_status=$?
+        echo -e "\n${RED}❌ Proceso no completado (código $process_status).${NC}"
+    fi
     read -p "Presiona Enter para volver al menú..."
 }
 

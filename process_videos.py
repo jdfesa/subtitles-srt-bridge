@@ -106,7 +106,7 @@ def translate_to_spanish(en_srt_path, es_srt_path):
 import re
 
 def normalize_path(path_str):
-    """
+    r"""
     Unescapes backslashes from a path string (common in macOS terminal drag & drop).
     Converts '/path\ with\ spaces' -> '/path with spaces'
     """
@@ -127,16 +127,10 @@ def process_directory(directory_path, force=False):
     
     root_dir = Path(clean_path_str).resolve()
     
-    if not root_dir.exists():
-        print(f"Error: Directory does not exist: {root_dir}")
+    if not root_dir.is_dir():
+        print(f"Error: Directory does not exist or is not a directory: {root_dir}")
         print(f"       (Original input: {directory_path})")
-        return
-
-    whisper_bin = check_whisper_installed()
-    
-    # 1. Create or verify 'sub_en' directory
-    sub_en_dir = root_dir / "sub_en"
-    sub_en_dir.mkdir(exist_ok=True)
+        return 1
     
     print(f"📂 Scanning directory: {root_dir}")
     
@@ -149,13 +143,20 @@ def process_directory(directory_path, force=False):
     if not videos:
         print(f"❌ No .mp4 videos found in: {root_dir}")
         print("   If your videos are elsewhere, please provide the full path in the menu.")
-        return
+        return 1
+
+    whisper_bin = check_whisper_installed()
+
+    # 1. Create or verify 'sub_en' directory
+    sub_en_dir = root_dir / "sub_en"
+    sub_en_dir.mkdir(exist_ok=True)
 
     print(f"Found {len(videos)} videos. Starting process...\n")
     
     total_videos = len(videos)
     start_time = time.time()
     processed_count = 0
+    failed_count = 0
     
     for i, video in enumerate(videos, 1):
         # Calculate ETA (Estimated Time of Arrival)
@@ -203,11 +204,14 @@ def process_directory(directory_path, force=False):
         
         if not english_source or not english_source.exists():
             print("   - Skipping translation (no English source).")
+            failed_count += 1
+            processed_count += 1
             continue
             
         # 2. Translate to Spanish if needed
         if not final_es_srt.exists() or force:
-            translate_to_spanish(english_source, final_es_srt)
+            if not translate_to_spanish(english_source, final_es_srt):
+                failed_count += 1
         else:
             print("   - Spanish subtitle already exists.")
 
@@ -219,9 +223,12 @@ def process_directory(directory_path, force=False):
                 print(f"📂 Moved English subtitle to: {final_en_srt_in_subdir.name}")
             except Exception as e:
                 print(f"⚠️  Failed to move English subtitle: {e}")
+                failed_count += 1
 
         processed_count += 1
         print("-" * 40)
+
+    return 1 if failed_count else 0
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Automate subtitle generation, translation, and organization.")
@@ -230,4 +237,4 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     
-    process_directory(args.directory, args.force)
+    raise SystemExit(process_directory(args.directory, args.force))

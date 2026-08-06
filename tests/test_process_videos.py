@@ -155,10 +155,11 @@ class LegacyDirectoryProcessingTests(unittest.TestCase):
                 patch("process_videos.translate_to_spanish") as translate,
                 redirect_stdout(StringIO()),
             ):
-                process_videos.process_directory(str(root))
+                result = process_videos.process_directory(str(root))
 
         generate.assert_not_called()
         translate.assert_not_called()
+        self.assertEqual(result, 0)
 
     @unittest.expectedFailure
     def test_does_not_treat_empty_sidecars_as_completed_work(self):
@@ -181,9 +182,7 @@ class LegacyDirectoryProcessingTests(unittest.TestCase):
 
         self.assertTrue(generate.called or translate.called)
 
-    @unittest.expectedFailure
     def test_reports_failure_with_nonzero_status_for_missing_directory(self):
-        """P0.1 reproduction: failures currently return None and CLI exits zero."""
         with tempfile.TemporaryDirectory() as temp_dir:
             missing = Path(temp_dir) / "missing"
             with redirect_stdout(StringIO()):
@@ -191,6 +190,58 @@ class LegacyDirectoryProcessingTests(unittest.TestCase):
 
         self.assertIsInstance(result, int)
         self.assertNotEqual(result, 0)
+
+    def test_reports_failure_without_loading_whisper_for_empty_directory(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with (
+                patch("process_videos.check_whisper_installed") as check,
+                redirect_stdout(StringIO()),
+            ):
+                result = process_videos.process_directory(temp_dir)
+
+        self.assertNotEqual(result, 0)
+        check.assert_not_called()
+
+    def test_reports_failure_when_a_video_cannot_generate_a_subtitle(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "lesson.mp4").touch()
+            with (
+                patch(
+                    "process_videos.check_whisper_installed",
+                    return_value="whisper",
+                ),
+                patch(
+                    "process_videos.generate_english_subtitle",
+                    return_value=None,
+                ),
+                redirect_stdout(StringIO()),
+            ):
+                result = process_videos.process_directory(str(root))
+
+        self.assertNotEqual(result, 0)
+
+    def test_reports_failure_when_a_video_cannot_be_translated(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "lesson.mp4").touch()
+            english = root / "lesson.en.srt"
+            english.write_text(VALID_SRT, encoding="utf-8")
+            with (
+                patch(
+                    "process_videos.check_whisper_installed",
+                    return_value="whisper",
+                ),
+                patch(
+                    "process_videos.translate_to_spanish",
+                    return_value=False,
+                ) as translate,
+                redirect_stdout(StringIO()),
+            ):
+                result = process_videos.process_directory(str(root))
+
+        self.assertNotEqual(result, 0)
+        translate.assert_called_once()
 
     @unittest.expectedFailure
     def test_discovers_mkv_inputs(self):
