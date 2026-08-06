@@ -19,6 +19,74 @@ from .paths import WorkspacePaths
 from .ports import MediaMuxer
 
 
+def planned_subtitles_for(
+    plan: VideoPlan,
+    paths: WorkspacePaths,
+    generated_subtitle: SubtitleArtifact | None,
+) -> tuple[SubtitleArtifact, ...]:
+    if plan.selected_subtitles != plan.inventory.valid_subtitles:
+        raise MuxingError(
+            "Plan does not select every valid subtitle from the inventory"
+        )
+    try:
+        transcription = plan.decision_for(PipelineStage.TRANSCRIBE)
+    except KeyError as exc:
+        raise MuxingError("Plan has no transcription decision") from exc
+
+    if transcription.action is StageAction.RUN:
+        if plan.selected_subtitles:
+            raise MuxingError(
+                "A transcription plan cannot also select existing subtitles"
+            )
+        if generated_subtitle is None:
+            raise MuxingError(
+                "Muxing requires the generated subtitle from transcription"
+            )
+        _validate_generated_subtitle(plan, paths, generated_subtitle)
+        return (generated_subtitle,)
+
+    if transcription.action is not StageAction.SKIP:
+        raise MuxingError("Transcription must complete before muxing")
+    if generated_subtitle is not None:
+        raise MuxingError("Generated subtitle was not planned for this video")
+    return plan.selected_subtitles
+
+
+def _validate_generated_subtitle(
+    plan: VideoPlan,
+    paths: WorkspacePaths,
+    subtitle: SubtitleArtifact,
+) -> None:
+    if subtitle.origin is not SubtitleOrigin.GENERATED:
+        raise MuxingError("Transcription did not return a generated subtitle")
+    if subtitle.state is not ArtifactState.VALID:
+        raise MuxingError("Generated subtitle is not valid")
+    if subtitle.validation is None or not subtitle.validation.is_valid:
+        raise MuxingError("Generated subtitle was not validated")
+    if subtitle.path is None:
+        raise MuxingError("Generated subtitle has no path")
+
+    expected = paths.generated_subtitle_target(plan.inventory.source)
+    candidate_pattern = re.compile(
+        rf"{re.escape(expected.stem)}(?:\.[a-zA-Z]{{2,3}})?\.srt"
+    )
+    if candidate_pattern.fullmatch(subtitle.path.name) is None:
+        raise MuxingError(
+            f"Generated subtitle does not belong to the video: {subtitle.path}"
+        )
+    if subtitle.path.resolve().parent != paths.staging_directory.resolve():
+        raise MuxingError("Generated subtitle is outside staging")
+    try:
+        if not subtitle.path.is_file() or subtitle.path.stat().st_size == 0:
+            raise MuxingError(
+                f"Generated subtitle is missing or empty: {subtitle.path}"
+            )
+    except OSError as exc:
+        raise MuxingError(
+            f"Cannot inspect generated subtitle {subtitle.path}: {exc}"
+        ) from exc
+
+
 class MuxingStage:
     def __init__(self, muxer: MediaMuxer) -> None:
         self.muxer = muxer
@@ -49,7 +117,7 @@ class MuxingStage:
         if decision.action is StageAction.NEEDS_INPUT or not plan.is_executable:
             raise MuxingError(f"Muxing plan is not executable: {decision.reason}")
 
-        subtitles = self._planned_subtitles(
+        subtitles = planned_subtitles_for(
             plan,
             paths,
             generated_subtitle,
@@ -87,78 +155,3 @@ class MuxingStage:
                 f"Cannot inspect staged MKV {destination}: {exc}"
             ) from exc
         return destination
-
-    @classmethod
-    def _planned_subtitles(
-        cls,
-        plan: VideoPlan,
-        paths: WorkspacePaths,
-        generated_subtitle: SubtitleArtifact | None,
-    ) -> tuple[SubtitleArtifact, ...]:
-        if plan.selected_subtitles != plan.inventory.valid_subtitles:
-            raise MuxingError(
-                "Plan does not select every valid subtitle from the inventory"
-            )
-        try:
-            transcription = plan.decision_for(PipelineStage.TRANSCRIBE)
-        except KeyError as exc:
-            raise MuxingError("Plan has no transcription decision") from exc
-
-        if transcription.action is StageAction.RUN:
-            if plan.selected_subtitles:
-                raise MuxingError(
-                    "A transcription plan cannot also select existing subtitles"
-                )
-            if generated_subtitle is None:
-                raise MuxingError(
-                    "Muxing requires the generated subtitle from transcription"
-                )
-            cls._validate_generated_subtitle(
-                plan,
-                paths,
-                generated_subtitle,
-            )
-            return (generated_subtitle,)
-
-        if transcription.action is not StageAction.SKIP:
-            raise MuxingError("Transcription must complete before muxing")
-        if generated_subtitle is not None:
-            raise MuxingError(
-                "Generated subtitle was not planned for this video"
-            )
-        return plan.selected_subtitles
-
-    @staticmethod
-    def _validate_generated_subtitle(
-        plan: VideoPlan,
-        paths: WorkspacePaths,
-        subtitle: SubtitleArtifact,
-    ) -> None:
-        if subtitle.origin is not SubtitleOrigin.GENERATED:
-            raise MuxingError("Transcription did not return a generated subtitle")
-        if subtitle.state is not ArtifactState.VALID:
-            raise MuxingError("Generated subtitle is not valid")
-        if subtitle.validation is None or not subtitle.validation.is_valid:
-            raise MuxingError("Generated subtitle was not validated")
-        if subtitle.path is None:
-            raise MuxingError("Generated subtitle has no path")
-
-        expected = paths.generated_subtitle_target(plan.inventory.source)
-        candidate_pattern = re.compile(
-            rf"{re.escape(expected.stem)}(?:\.[a-zA-Z]{{2,3}})?\.srt"
-        )
-        if candidate_pattern.fullmatch(subtitle.path.name) is None:
-            raise MuxingError(
-                f"Generated subtitle does not belong to the video: {subtitle.path}"
-            )
-        if subtitle.path.resolve().parent != paths.staging_directory.resolve():
-            raise MuxingError("Generated subtitle is outside staging")
-        try:
-            if not subtitle.path.is_file() or subtitle.path.stat().st_size == 0:
-                raise MuxingError(
-                    f"Generated subtitle is missing or empty: {subtitle.path}"
-                )
-        except OSError as exc:
-            raise MuxingError(
-                f"Cannot inspect generated subtitle {subtitle.path}: {exc}"
-            ) from exc

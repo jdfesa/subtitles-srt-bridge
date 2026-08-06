@@ -17,6 +17,7 @@ from subtitles_bridge.models import (
     SubtitleArtifact,
     SubtitleOrigin,
     SubtitleValidation,
+    VerifiedOutput,
     VideoInventory,
     VideoPlan,
     VideoResult,
@@ -143,6 +144,33 @@ class VideoInventoryTests(unittest.TestCase):
             MediaInspection(duplicate_streams)
         with self.assertRaisesRegex(ValueError, "duration"):
             MediaInspection((), duration_seconds=-1)
+
+
+class VerifiedOutputTests(unittest.TestCase):
+    def test_is_immutable_and_requires_a_positive_mkv_snapshot(self):
+        inspection = MediaInspection(
+            (MediaStream(0, StreamKind.VIDEO, "h264"),)
+        )
+        verified = VerifiedOutput(
+            Path("lesson.mp4"),
+            Path("staging/lesson.subtitled.mkv"),
+            inspection,
+            (),
+            1024,
+            123,
+        )
+
+        with self.assertRaises(FrozenInstanceError):
+            verified.size_bytes = 0
+        with self.assertRaisesRegex(ValueError, "positive"):
+            VerifiedOutput(
+                Path("lesson.mp4"),
+                Path("staging/lesson.subtitled.mkv"),
+                inspection,
+                (),
+                0,
+                123,
+            )
 
 
 class VideoPlanTests(unittest.TestCase):

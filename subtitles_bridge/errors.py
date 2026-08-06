@@ -47,3 +47,15 @@ class MuxingError(SubtitleBridgeError):
 
 class MuxingCollisionError(MuxingError):
     """A staged MKV path is occupied and cannot be overwritten."""
+
+
+class VerificationError(SubtitleBridgeError):
+    """A staged MKV does not satisfy the preservation contract."""
+
+
+class PublicationError(SubtitleBridgeError):
+    """A verified MKV could not be published safely."""
+
+
+class PublicationCollisionError(PublicationError):
+    """The final output route is occupied and cannot be overwritten."""

@@ -240,6 +240,36 @@ class VideoInventory:
 
 
 @dataclass(frozen=True, slots=True)
+class VerifiedOutput:
+    source: Path
+    staged_path: Path
+    inspection: MediaInspection
+    expected_subtitles: tuple[SubtitleArtifact, ...]
+    size_bytes: int
+    modified_time_ns: int
+
+    def __post_init__(self) -> None:
+        if self.source.resolve() == self.staged_path.resolve():
+            raise ValueError("Verified output cannot replace its source")
+        if self.staged_path.suffix.casefold() != ".mkv":
+            raise ValueError("Verified output must use the .mkv extension")
+        if self.size_bytes <= 0:
+            raise ValueError("Verified output size must be positive")
+        if self.modified_time_ns < 0:
+            raise ValueError("Verified output mtime cannot be negative")
+        if not any(
+            stream.kind is StreamKind.VIDEO
+            for stream in self.inspection.streams
+        ):
+            raise ValueError("Verified output must contain a video stream")
+        if any(
+            subtitle.state is not ArtifactState.VALID
+            for subtitle in self.expected_subtitles
+        ):
+            raise ValueError("Verified output can reference only valid subtitles")
+
+
+@dataclass(frozen=True, slots=True)
 class PlanDecision:
     stage: PipelineStage
     action: StageAction

@@ -12,6 +12,7 @@ from .models import (
     SpeechTranscript,
     SubtitleArtifact,
     SubtitleValidation,
+    VerifiedOutput,
     VideoInventory,
 )
 
@@ -68,7 +69,7 @@ class OutputVerifier(Protocol):
         inventory: VideoInventory,
         output: Path,
         expected_subtitles: Sequence[SubtitleArtifact],
-    ) -> None: ...
+    ) -> VerifiedOutput: ...
 
 
 @runtime_checkable

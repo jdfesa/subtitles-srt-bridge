@@ -11,6 +11,7 @@ from subtitles_bridge.models import (
     SubtitleArtifact,
     SubtitleOrigin,
     SubtitleValidation,
+    VerifiedOutput,
     VideoInventory,
 )
 from subtitles_bridge.ports import (
@@ -60,7 +61,14 @@ class FakeAdapters:
 
     class Verifier:
         def verify(self, inventory, output, expected_subtitles):
-            return None
+            return VerifiedOutput(
+                inventory.source,
+                output,
+                MediaInspection(inventory.streams),
+                tuple(expected_subtitles),
+                1,
+                0,
+            )
 
     class Publisher:
         def publish(self, staged_output, final_output):
