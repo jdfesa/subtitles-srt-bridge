@@ -19,3 +19,23 @@ class MediaInspectionError(SubtitleBridgeError):
 
 class PlanningError(SubtitleBridgeError):
     """The supplied planning inputs are inconsistent or duplicated."""
+
+
+class TranscriptionError(SubtitleBridgeError):
+    """The planned subtitle transcription could not be completed safely."""
+
+
+class TranscriptionDependencyError(TranscriptionError):
+    """A local Whisper or FFmpeg dependency is missing or unusable."""
+
+
+class AudioExtractionError(TranscriptionError):
+    """The selected audio stream could not be extracted to staging."""
+
+
+class StagingCollisionError(TranscriptionError):
+    """A staging path is already occupied and cannot be overwritten."""
+
+
+class GeneratedSubtitleError(TranscriptionError):
+    """Whisper output did not produce a valid reusable SRT."""

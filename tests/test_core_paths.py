@@ -36,7 +36,7 @@ class WorkspacePathsTests(unittest.TestCase):
             with self.assertRaisesRegex(InputPathError, "not a directory"):
                 WorkspacePaths.from_directory(regular_file)
 
-    def test_derives_output_and_trash_paths_without_creating_them(self):
+    def test_derives_managed_paths_without_creating_them(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             video = root / "Lesson.01.MP4"
@@ -45,14 +45,20 @@ class WorkspacePathsTests(unittest.TestCase):
 
             output = paths.output_for(video)
             trash = paths.trash_for(video)
+            generated_subtitle = paths.generated_subtitle_target(video)
 
             self.assertEqual(
                 output,
                 paths.root / "output" / "Lesson.01.subtitled.mkv",
             )
             self.assertEqual(trash, paths.root / "trash" / "Lesson.01")
+            self.assertEqual(
+                generated_subtitle,
+                paths.root / "staging" / "Lesson.01.generated.srt",
+            )
             self.assertFalse(paths.output_directory.exists())
             self.assertFalse(paths.trash_directory.exists())
+            self.assertFalse(paths.staging_directory.exists())
 
     def test_accepts_mkv_source_in_workspace_root(self):
         with tempfile.TemporaryDirectory() as temp_dir:

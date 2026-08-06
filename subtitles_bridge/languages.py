@@ -79,6 +79,18 @@ def normalize_language_code(raw_language: str | None) -> str:
     return "und"
 
 
+def normalize_trusted_language(raw_language: str | None) -> str:
+    normalized = normalize_language_code(raw_language)
+    if normalized != "und":
+        return normalized
+    if raw_language is None:
+        return "und"
+    folded = ascii_fold(raw_language.strip())
+    if re.fullmatch(r"[a-z]{2,3}", folded):
+        return folded
+    return "und"
+
+
 def is_subtitle_metadata_token(token: str) -> bool:
     folded = ascii_fold(token)
     return (

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+import math
 from pathlib import Path
 
 
@@ -110,6 +111,35 @@ class MediaInspection:
             raise ValueError("Stream indices must be unique within an inspection")
         if self.duration_seconds is not None and self.duration_seconds < 0:
             raise ValueError("Media duration cannot be negative")
+
+
+@dataclass(frozen=True, slots=True)
+class SpeechSegment:
+    start_seconds: float
+    end_seconds: float
+    text: str
+
+    def __post_init__(self) -> None:
+        if not math.isfinite(self.start_seconds) or not math.isfinite(
+            self.end_seconds
+        ):
+            raise ValueError("Speech segment timestamps must be finite")
+        if self.start_seconds < 0:
+            raise ValueError("Speech segment start cannot be negative")
+        if self.end_seconds < self.start_seconds:
+            raise ValueError("Speech segment end cannot precede its start")
+        if not self.text.strip():
+            raise ValueError("Speech segment text cannot be empty")
+
+
+@dataclass(frozen=True, slots=True)
+class SpeechTranscript:
+    language: str
+    segments: tuple[SpeechSegment, ...]
+
+    def __post_init__(self) -> None:
+        if not self.language.strip():
+            raise ValueError("Transcript language cannot be empty; use 'und'")
 
 
 @dataclass(frozen=True, slots=True)

@@ -5,6 +5,7 @@ from subtitles_bridge.languages import (
     infer_subtitle_metadata,
     is_subtitle_metadata_token,
     normalize_language_code,
+    normalize_trusted_language,
 )
 
 
@@ -18,6 +19,10 @@ class LanguageNormalizationTests(unittest.TestCase):
         self.assertEqual(normalize_language_code(None), "und")
         self.assertEqual(normalize_language_code(""), "und")
         self.assertEqual(normalize_language_code("xx"), "und")
+
+    def test_preserves_trusted_detected_two_letter_language(self):
+        self.assertEqual(normalize_trusted_language("ru"), "ru")
+        self.assertEqual(normalize_trusted_language("en"), "eng")
 
     def test_recognizes_language_and_subtitle_qualifier_tokens(self):
         self.assertTrue(is_subtitle_metadata_token("english"))

@@ -35,6 +35,10 @@ class WorkspacePaths:
     def trash_directory(self) -> Path:
         return self.root / "trash"
 
+    @property
+    def staging_directory(self) -> Path:
+        return self.root / "staging"
+
     def source_video(self, raw_path: str | Path) -> Path:
         candidate = Path(raw_path).expanduser()
         try:
@@ -59,3 +63,7 @@ class WorkspacePaths:
     def trash_for(self, raw_source: str | Path) -> Path:
         source = self.source_video(raw_source)
         return self.trash_directory / source.stem
+
+    def generated_subtitle_target(self, raw_source: str | Path) -> Path:
+        source = self.source_video(raw_source)
+        return self.staging_directory / f"{source.stem}.generated.srt"

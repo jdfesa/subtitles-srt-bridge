@@ -9,6 +9,7 @@ from typing import Protocol, runtime_checkable
 from .models import (
     MediaInspection,
     MediaStream,
+    SpeechTranscript,
     SubtitleArtifact,
     SubtitleValidation,
     VideoInventory,
@@ -23,6 +24,21 @@ class MediaProbe(Protocol):
 @runtime_checkable
 class SubtitleValidator(Protocol):
     def validate(self, path: Path) -> SubtitleValidation: ...
+
+
+@runtime_checkable
+class AudioExtractor(Protocol):
+    def extract(
+        self,
+        source: Path,
+        audio_stream: MediaStream,
+        destination: Path,
+    ) -> None: ...
+
+
+@runtime_checkable
+class SpeechRecognizer(Protocol):
+    def transcribe(self, audio: Path) -> SpeechTranscript: ...
 
 
 @runtime_checkable

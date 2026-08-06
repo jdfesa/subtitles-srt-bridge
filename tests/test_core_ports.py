@@ -5,6 +5,8 @@ from subtitles_bridge.models import (
     ArtifactState,
     MediaInspection,
     MediaStream,
+    SpeechSegment,
+    SpeechTranscript,
     StreamKind,
     SubtitleArtifact,
     SubtitleOrigin,
@@ -12,11 +14,13 @@ from subtitles_bridge.models import (
     VideoInventory,
 )
 from subtitles_bridge.ports import (
+    AudioExtractor,
     InputArchiver,
     MediaMuxer,
     MediaProbe,
     OutputPublisher,
     OutputVerifier,
+    SpeechRecognizer,
     SubtitleTranscriber,
     SubtitleValidator,
 )
@@ -39,6 +43,17 @@ class FakeAdapters:
         def validate(self, path):
             return SubtitleValidation(True, 1, "utf-8")
 
+    class Extractor:
+        def extract(self, source, audio_stream, destination):
+            return None
+
+    class Recognizer:
+        def transcribe(self, audio):
+            return SpeechTranscript(
+                "eng",
+                (SpeechSegment(0, 1, "Hello"),),
+            )
+
     class Muxer:
         def mux(self, inventory, subtitles, destination):
             return None
@@ -60,6 +75,8 @@ class PortBoundaryTests(unittest.TestCase):
     def test_fake_adapters_satisfy_runtime_protocols(self):
         self.assertIsInstance(FakeAdapters.Probe(), MediaProbe)
         self.assertIsInstance(FakeAdapters.Validator(), SubtitleValidator)
+        self.assertIsInstance(FakeAdapters.Extractor(), AudioExtractor)
+        self.assertIsInstance(FakeAdapters.Recognizer(), SpeechRecognizer)
         self.assertIsInstance(FakeAdapters.Transcriber(), SubtitleTranscriber)
         self.assertIsInstance(FakeAdapters.Muxer(), MediaMuxer)
         self.assertIsInstance(FakeAdapters.Verifier(), OutputVerifier)
