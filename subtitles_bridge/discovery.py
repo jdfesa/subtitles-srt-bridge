@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from .errors import SubtitleBridgeError
+from .integrity import subtitle_sha256
 from .languages import infer_subtitle_metadata, is_subtitle_metadata_token
 from .models import (
     ArtifactState,
@@ -114,6 +115,7 @@ class WorkspaceDiscovery:
 
             video = candidates[0]
             validation = self.validator.validate(sidecar)
+            content_sha256 = subtitle_sha256(sidecar) if validation.is_valid else None
             metadata = infer_subtitle_metadata(
                 sidecar,
                 video.stem,
@@ -137,6 +139,7 @@ class WorkspaceDiscovery:
                     path=sidecar,
                     validation=validation,
                     message=message,
+                    content_sha256=content_sha256,
                 )
             )
 

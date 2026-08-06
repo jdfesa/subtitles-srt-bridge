@@ -87,7 +87,13 @@ def format_video_plan(plan: VideoPlan) -> str:
 
 
 def format_batch_plan(plan: BatchPlan) -> str:
-    status = "ready" if plan.is_executable else "needs-input"
+    status = (
+        "needs-input"
+        if not plan.is_executable
+        else "empty"
+        if not plan.videos
+        else "ready"
+    )
     lines = [f"Batch: {len(plan.videos)} video(s)", f"Status: {status}"]
     if plan.issues:
         lines.append("Discovery issues:")

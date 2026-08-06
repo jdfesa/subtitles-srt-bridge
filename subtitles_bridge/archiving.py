@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .errors import ArchivingError, ArchivingPartialError, MuxingError
+from .errors import (
+    ArchivingError,
+    ArchivingPartialError,
+    MuxingError,
+    SubtitleIntegrityError,
+)
+from .integrity import subtitle_sha256
 from .models import (
     ArchivedInputs,
     BatchPlan,
@@ -78,6 +84,7 @@ class ArchivingStage:
             if subtitle.origin is not SubtitleOrigin.EMBEDDED
             and subtitle.path is not None
         )
+        self._require_current_sidecars(expected_subtitles)
         expected_originals = (plan.inventory.source, *sidecars)
         expected_archived = tuple(
             destination / path.name for path in expected_originals
@@ -162,6 +169,25 @@ class ArchivingStage:
                 "Published output does not contain the planned subtitles"
             )
         return expected
+
+    @staticmethod
+    def _require_current_sidecars(
+        subtitles: tuple[SubtitleArtifact, ...],
+    ) -> None:
+        for subtitle in subtitles:
+            if subtitle.origin is SubtitleOrigin.EMBEDDED:
+                continue
+            assert subtitle.path is not None
+            if subtitle.content_sha256 is None:
+                continue
+            try:
+                current_sha256 = subtitle_sha256(subtitle.path)
+            except SubtitleIntegrityError as exc:
+                raise ArchivingError(str(exc)) from exc
+            if current_sha256 != subtitle.content_sha256:
+                raise ArchivingError(
+                    f"Subtitle sidecar changed after publication: {subtitle.path}"
+                )
 
     @staticmethod
     def _require_current_output(published_output: PublishedOutput) -> None:

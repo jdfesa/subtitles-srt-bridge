@@ -5,7 +5,8 @@ from __future__ import annotations
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 
-from .errors import MuxingError, VerificationError
+from .errors import MuxingError, SubtitleIntegrityError, VerificationError
+from .integrity import SUBTITLE_SHA256_METADATA_KEY, subtitle_sha256
 from .models import (
     ArtifactState,
     BatchPlan,
@@ -191,6 +192,15 @@ class OutputContractVerifier:
                 raise VerificationError(
                     f"Cannot inspect expected subtitle {subtitle.path}: {exc}"
                 ) from exc
+            if subtitle.content_sha256 is not None:
+                try:
+                    current_sha256 = subtitle_sha256(subtitle.path)
+                except SubtitleIntegrityError as exc:
+                    raise VerificationError(str(exc)) from exc
+                if current_sha256 != subtitle.content_sha256:
+                    raise VerificationError(
+                        f"Expected subtitle changed after mux: {subtitle.path}"
+                    )
 
     def _verify_contract(
         self,
@@ -307,6 +317,14 @@ class OutputContractVerifier:
             )
         if "default" in output.dispositions or output.is_default:
             raise VerificationError(f"{label} is marked as default")
+        if subtitle.content_sha256 is not None:
+            metadata = _metadata_map(output.metadata)
+            output_sha256 = metadata.get(SUBTITLE_SHA256_METADATA_KEY)
+            if output_sha256 != subtitle.content_sha256:
+                raise VerificationError(
+                    f"{label} changed subtitle SHA-256: "
+                    f"{subtitle.content_sha256} -> {output_sha256}"
+                )
 
     def _verify_duration(
         self,

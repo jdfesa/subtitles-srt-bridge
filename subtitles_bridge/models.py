@@ -170,10 +170,21 @@ class SubtitleArtifact:
     stream_index: int | None = None
     validation: SubtitleValidation | None = None
     message: str | None = None
+    content_sha256: str | None = None
 
     def __post_init__(self) -> None:
         if not self.language.strip():
             raise ValueError("Subtitle language cannot be empty; use 'und'")
+        if self.content_sha256 is not None and (
+            len(self.content_sha256) != 64
+            or any(
+                character not in "0123456789abcdef"
+                for character in self.content_sha256
+            )
+        ):
+            raise ValueError(
+                "Subtitle SHA-256 must be 64 lowercase hexadecimal characters"
+            )
 
         if self.origin is SubtitleOrigin.EMBEDDED:
             if self.stream_index is None or self.stream_index < 0:
@@ -182,6 +193,8 @@ class SubtitleArtifact:
                 )
             if self.path is not None:
                 raise ValueError("Embedded subtitles cannot reference an external path")
+            if self.content_sha256 is not None:
+                raise ValueError("Embedded subtitles cannot use a sidecar SHA-256")
             return
 
         if self.path is None:

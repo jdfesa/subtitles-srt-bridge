@@ -14,6 +14,7 @@ from .errors import (
     TranscriptionError,
 )
 from .languages import normalize_trusted_language
+from .integrity import subtitle_sha256
 from .models import (
     ArtifactState,
     BatchPlan,
@@ -66,6 +67,65 @@ def render_srt(transcript: SpeechTranscript) -> str:
             )
         )
     return "\n\n".join(blocks) + ("\n" if blocks else "")
+
+
+def find_existing_generated_subtitle(
+    destination: Path,
+    validator: SubtitleValidator,
+) -> SubtitleArtifact | None:
+    """Return the one valid staged transcription candidate, if present."""
+    candidates = []
+    if destination.exists():
+        candidates.append(destination)
+    candidates.extend(destination.parent.glob(f"{destination.stem}.*.srt"))
+    unique_candidates = tuple(
+        sorted(
+            {candidate.resolve() for candidate in candidates},
+            key=lambda path: str(path).casefold(),
+        )
+    )
+    if not unique_candidates:
+        return None
+    staging_parent = destination.parent.resolve()
+    if any(candidate.parent != staging_parent for candidate in unique_candidates):
+        raise StagingCollisionError(
+            "Generated subtitle candidate resolves outside staging"
+        )
+    if len(unique_candidates) > 1:
+        names = ", ".join(path.name for path in unique_candidates)
+        raise StagingCollisionError(
+            f"Multiple generated subtitle candidates exist: {names}"
+        )
+
+    candidate = unique_candidates[0]
+    validation = validator.validate(candidate)
+    if not validation.is_valid:
+        raise StagingCollisionError(
+            f"Existing generated subtitle is invalid: {candidate}: "
+            f"{validation.error}"
+        )
+    language = _generated_candidate_language(candidate, destination)
+    return SubtitleArtifact(
+        origin=SubtitleOrigin.GENERATED,
+        state=ArtifactState.VALID,
+        language=language,
+        title=f"Whisper transcription ({language})",
+        path=candidate,
+        validation=validation,
+        content_sha256=subtitle_sha256(candidate),
+    )
+
+
+def _generated_candidate_language(candidate: Path, destination: Path) -> str:
+    if candidate.name == destination.name:
+        return "und"
+    prefix = f"{destination.stem}."
+    suffix = candidate.stem.removeprefix(prefix)
+    if re.fullmatch(r"[a-zA-Z]{2,3}", suffix) is None:
+        raise StagingCollisionError(
+            f"Generated subtitle has no trusted language suffix: {candidate}"
+        )
+    return normalize_trusted_language(suffix)
 
 
 class StagedSubtitleTranscriber:
@@ -157,6 +217,7 @@ class StagedSubtitleTranscriber:
                 title=f"Whisper transcription ({language})",
                 path=created_subtitle,
                 validation=validation,
+                content_sha256=subtitle_sha256(created_subtitle),
             )
         except Exception as exc:
             created_paths = [temporary_audio]
@@ -180,59 +241,7 @@ class StagedSubtitleTranscriber:
         return artifact
 
     def _existing_candidate(self, destination: Path) -> SubtitleArtifact | None:
-        candidates = []
-        if destination.exists():
-            candidates.append(destination)
-        candidates.extend(destination.parent.glob(f"{destination.stem}.*.srt"))
-        unique_candidates = tuple(
-            sorted(
-                {candidate.resolve() for candidate in candidates},
-                key=lambda path: str(path).casefold(),
-            )
-        )
-        if not unique_candidates:
-            return None
-        staging_parent = destination.parent.resolve()
-        if any(
-            candidate.parent != staging_parent for candidate in unique_candidates
-        ):
-            raise StagingCollisionError(
-                "Generated subtitle candidate resolves outside staging"
-            )
-        if len(unique_candidates) > 1:
-            names = ", ".join(path.name for path in unique_candidates)
-            raise StagingCollisionError(
-                f"Multiple generated subtitle candidates exist: {names}"
-            )
-
-        candidate = unique_candidates[0]
-        validation = self.validator.validate(candidate)
-        if not validation.is_valid:
-            raise StagingCollisionError(
-                f"Existing generated subtitle is invalid: {candidate}: "
-                f"{validation.error}"
-            )
-        language = self._candidate_language(candidate, destination)
-        return SubtitleArtifact(
-            origin=SubtitleOrigin.GENERATED,
-            state=ArtifactState.VALID,
-            language=language,
-            title=f"Whisper transcription ({language}, resumed)",
-            path=candidate,
-            validation=validation,
-        )
-
-    @staticmethod
-    def _candidate_language(candidate: Path, destination: Path) -> str:
-        if candidate.name == destination.name:
-            return "und"
-        prefix = f"{destination.stem}."
-        suffix = candidate.stem.removeprefix(prefix)
-        if re.fullmatch(r"[a-zA-Z]{2,3}", suffix) is None:
-            raise StagingCollisionError(
-                f"Generated subtitle has no trusted language suffix: {candidate}"
-            )
-        return normalize_trusted_language(suffix)
+        return find_existing_generated_subtitle(destination, self.validator)
 
     @staticmethod
     def _validate_temporary_audio(

@@ -41,6 +41,10 @@ class GeneratedSubtitleError(TranscriptionError):
     """Whisper output did not produce a valid reusable SRT."""
 
 
+class SubtitleIntegrityError(SubtitleBridgeError):
+    """A subtitle sidecar cannot be tied to its validated content."""
+
+
 class MuxingError(SubtitleBridgeError):
     """The planned MKV remux could not be completed safely."""
 

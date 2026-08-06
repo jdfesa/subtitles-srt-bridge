@@ -9,6 +9,7 @@ from subtitles_bridge.errors import (
     StagingCollisionError,
     TranscriptionError,
 )
+from subtitles_bridge.integrity import subtitle_sha256
 from subtitles_bridge.models import (
     ArtifactState,
     DiscoveryIssue,
@@ -111,6 +112,7 @@ class StagedSubtitleTranscriberTests(unittest.TestCase):
         self.assertEqual(artifact.path.name, "lesson.generated.eng.srt")
         self.assertEqual(artifact.language, "eng")
         self.assertTrue(artifact.validation.is_valid)
+        self.assertEqual(artifact.content_sha256, subtitle_sha256(artifact.path))
         self.assertEqual(extractor.calls[0][1].index, 3)
         self.assertEqual(recognizer.calls, [temporary_audio])
         self.assertFalse(temporary_audio.exists())
@@ -137,6 +139,7 @@ class StagedSubtitleTranscriberTests(unittest.TestCase):
 
         self.assertEqual(artifact.path, existing.resolve())
         self.assertEqual(artifact.language, "spa")
+        self.assertEqual(artifact.content_sha256, subtitle_sha256(existing))
         self.assertEqual(extractor.calls, [])
         self.assertEqual(recognizer.calls, [])
 

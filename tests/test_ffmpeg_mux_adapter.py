@@ -1,4 +1,5 @@
 from pathlib import Path
+from hashlib import sha256
 import subprocess
 import tempfile
 import unittest
@@ -46,6 +47,7 @@ class FFmpegMuxCommandTests(unittest.TestCase):
             title="English",
             path=english,
             validation=SubtitleValidation(True, 1, "utf-8"),
+            content_sha256="a" * 64,
         )
         generated = SubtitleArtifact(
             SubtitleOrigin.GENERATED,
@@ -54,6 +56,7 @@ class FFmpegMuxCommandTests(unittest.TestCase):
             title="Spanish generated",
             path=spanish,
             validation=SubtitleValidation(True, 1, "cp1252"),
+            content_sha256="b" * 64,
         )
         return inventory, embedded, external, generated
 
@@ -100,10 +103,14 @@ class FFmpegMuxCommandTests(unittest.TestCase):
                 "language=eng",
                 "-metadata:s:s:1",
                 "title=English",
+                "-metadata:s:s:1",
+                f"subtitles_bridge_sha256={'a' * 64}",
                 "-metadata:s:s:2",
                 "language=spa",
                 "-metadata:s:s:2",
                 "title=Spanish generated",
+                "-metadata:s:s:2",
+                f"subtitles_bridge_sha256={'b' * 64}",
                 "-disposition:s:0",
                 "-default",
                 "-disposition:s:1",
@@ -201,6 +208,7 @@ class FFmpegMediaMuxerTests(unittest.TestCase):
             title="English",
             path=subtitle_path.resolve(),
             validation=SubtitleValidation(True, 1, "utf-8"),
+            content_sha256=sha256(b"subtitle").hexdigest(),
         )
         staging = root / "staging"
         staging.mkdir()
@@ -242,6 +250,22 @@ class FFmpegMediaMuxerTests(unittest.TestCase):
         )
         self.assertEqual(source.read_bytes(), source_content)
         self.assertEqual(sidecar.read_bytes(), sidecar_content)
+
+    def test_rejects_sidecar_changed_after_its_hash_was_recorded(self):
+        _, inventory, sidecar, subtitle, destination, working = (
+            self.make_workspace()
+        )
+        sidecar.write_bytes(b"changed subtitle")
+        runner_calls = []
+
+        with self.assertRaisesRegex(MuxingError, "changed after validation"):
+            self.make_muxer(
+                lambda *args, **kwargs: runner_calls.append((args, kwargs)),
+                working,
+            ).mux(inventory, (subtitle,), destination)
+
+        self.assertEqual(runner_calls, [])
+        self.assertFalse(destination.exists())
 
     def test_cleans_reserved_and_partial_outputs_when_ffmpeg_fails(self):
         source, inventory, sidecar, subtitle, destination, working = (

@@ -92,6 +92,20 @@ class SubtitleArtifactTests(unittest.TestCase):
                 path=Path("lesson.srt"),
                 stream_index=3,
             )
+        with self.assertRaisesRegex(ValueError, "cannot use a sidecar SHA-256"):
+            SubtitleArtifact(
+                origin=SubtitleOrigin.EMBEDDED,
+                state=ArtifactState.VALID,
+                stream_index=3,
+                content_sha256="a" * 64,
+            )
+        with self.assertRaisesRegex(ValueError, "64 lowercase"):
+            SubtitleArtifact(
+                origin=SubtitleOrigin.EXTERNAL,
+                state=ArtifactState.VALID,
+                path=Path("lesson.srt"),
+                content_sha256="NOT-A-HASH",
+            )
 
 
 class VideoInventoryTests(unittest.TestCase):

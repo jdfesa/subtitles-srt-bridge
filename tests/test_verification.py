@@ -5,6 +5,7 @@ import unittest
 
 from subtitles_bridge.batch_planner import BatchPlanner
 from subtitles_bridge.errors import VerificationError
+from subtitles_bridge.integrity import subtitle_sha256
 from subtitles_bridge.models import (
     ArtifactState,
     DiscoveryIssue,
@@ -53,6 +54,7 @@ class OutputContractVerifierTests(unittest.TestCase):
             "1\n00:00:00,000 --> 00:00:01,000\nHello\n",
             encoding="utf-8",
         )
+        sidecar_hash = subtitle_sha256(sidecar_path)
         staged = root / "staging" / "lesson.subtitled.mkv"
         staged.parent.mkdir()
         staged.write_bytes(b"verified-mkv")
@@ -111,6 +113,7 @@ class OutputContractVerifierTests(unittest.TestCase):
             title="English",
             path=sidecar_path.resolve(),
             validation=SubtitleValidation(True, 1, "utf-8"),
+            content_sha256=sidecar_hash,
         )
         chapter = MediaChapter(
             7,
@@ -161,6 +164,7 @@ class OutputContractVerifierTests(unittest.TestCase):
                 "subrip",
                 language="eng",
                 title="English",
+                metadata=(("SUBTITLES_BRIDGE_SHA256", sidecar_hash),),
             ),
         )
         output_chapter = MediaChapter(
@@ -289,6 +293,16 @@ class OutputContractVerifierTests(unittest.TestCase):
                 ),
                 "changed title",
             ),
+            (
+                lambda streams: (
+                    *streams[:3],
+                    replace(
+                        streams[3],
+                        metadata=(("SUBTITLES_BRIDGE_SHA256", "b" * 64),),
+                    ),
+                ),
+                "changed subtitle SHA-256",
+            ),
         )
         for change, message in cases:
             with self.subTest(message=message):
@@ -335,6 +349,14 @@ class OutputContractVerifierTests(unittest.TestCase):
 
         expected[1].path.unlink()
         with self.assertRaisesRegex(VerificationError, "missing or empty"):
+            self.verify(inventory, expected, staged, inspection)
+
+        _, inventory, expected, staged, inspection = self.make_case()
+        expected[1].path.write_text(
+            "1\n00:00:00,000 --> 00:00:01,000\nChanged\n",
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(VerificationError, "changed after mux"):
             self.verify(inventory, expected, staged, inspection)
 
         _, inventory, expected, staged, inspection = self.make_case()

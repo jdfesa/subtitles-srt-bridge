@@ -11,6 +11,7 @@ from subtitles_bridge.adapters.filesystem_publish import AtomicOutputPublisher
 from subtitles_bridge.archiving import ArchivingStage
 from subtitles_bridge.batch_planner import BatchPlanner
 from subtitles_bridge.errors import ArchivingError, ArchivingPartialError
+from subtitles_bridge.integrity import subtitle_sha256
 from subtitles_bridge.models import (
     ArchivedInputs,
     ArtifactState,
@@ -71,6 +72,7 @@ class ArchivingStageTests(unittest.TestCase):
                 "1\n00:00:00,000 --> 00:00:01,000\nHello\n",
                 encoding="utf-8",
             )
+            sidecar_hash = subtitle_sha256(sidecar)
             subtitles = (
                 SubtitleArtifact(
                     SubtitleOrigin.EXTERNAL,
@@ -78,6 +80,7 @@ class ArchivingStageTests(unittest.TestCase):
                     language="eng",
                     path=sidecar.resolve(),
                     validation=SubtitleValidation(True, 1, "utf-8"),
+                    content_sha256=sidecar_hash,
                 ),
             )
         inventory = VideoInventory(
@@ -132,6 +135,25 @@ class ArchivingStageTests(unittest.TestCase):
         self.assertTrue(invalid.is_file())
         self.assertTrue(unrelated.is_file())
         self.assertTrue(proof.final_path.is_file())
+
+    def test_refuses_sidecar_changed_after_publication(self):
+        _, source, inventory, paths, batch, proof = self.make_workspace()
+        sidecar = inventory.valid_subtitles[0].path
+        sidecar.write_text(
+            "1\n00:00:00,000 --> 00:00:01,000\nChanged\n",
+            encoding="utf-8",
+        )
+        archiver = RecordingArchiver()
+
+        with self.assertRaisesRegex(
+            ArchivingError,
+            "changed after publication",
+        ):
+            ArchivingStage(archiver).execute(batch, source, paths, proof)
+
+        self.assertEqual(archiver.calls, [])
+        self.assertTrue(source.is_file())
+        self.assertTrue(sidecar.is_file())
 
     def test_consumes_the_proof_returned_by_atomic_publication(self):
         _, source, _, paths, batch, proof = self.make_workspace()

@@ -8,6 +8,7 @@ from subtitles_bridge.discovery import (
     discover_video_paths,
 )
 from subtitles_bridge.errors import MediaInspectionError
+from subtitles_bridge.integrity import subtitle_sha256
 from subtitles_bridge.models import (
     ArtifactState,
     DiscoveryIssueKind,
@@ -156,6 +157,13 @@ class WorkspaceDiscoveryTests(unittest.TestCase):
             subtitle for subtitle in external if subtitle.path == invalid.resolve()
         )
         self.assertFalse(invalid_artifact.validation.is_valid)
+        for subtitle in external:
+            expected_hash = (
+                subtitle_sha256(subtitle.path)
+                if subtitle.state is ArtifactState.VALID
+                else None
+            )
+            self.assertEqual(subtitle.content_sha256, expected_hash)
         self.assertEqual(result.issues, ())
 
     def test_keeps_ambiguous_and_unassociated_sidecars_outside_inventories(self):

@@ -8,7 +8,8 @@ from pathlib import Path
 import subprocess
 from uuid import uuid4
 
-from ..errors import MuxingCollisionError, MuxingError
+from ..errors import MuxingCollisionError, MuxingError, SubtitleIntegrityError
+from ..integrity import SUBTITLE_SHA256_METADATA_KEY, subtitle_sha256
 from ..models import (
     ArtifactState,
     StreamKind,
@@ -129,6 +130,13 @@ def build_ffmpeg_mux_command(
             command.extend(
                 (f"-metadata:s:s:{output_index}", f"title={subtitle.title}")
             )
+        if subtitle.content_sha256 is not None:
+            command.extend(
+                (
+                    f"-metadata:s:s:{output_index}",
+                    f"{SUBTITLE_SHA256_METADATA_KEY}={subtitle.content_sha256}",
+                )
+            )
 
     for output_index in range(embedded_count + len(sidecars)):
         command.extend((f"-disposition:s:{output_index}", "-default"))
@@ -241,6 +249,17 @@ class FFmpegMediaMuxer:
                 raise MuxingError(
                     "Subtitle sidecar conflicts with a managed media path: "
                     f"{subtitle.path}"
+                )
+            try:
+                current_sha256 = subtitle_sha256(subtitle.path)
+            except SubtitleIntegrityError as exc:
+                raise MuxingError(str(exc)) from exc
+            if (
+                subtitle.content_sha256 is not None
+                and current_sha256 != subtitle.content_sha256
+            ):
+                raise MuxingError(
+                    f"Subtitle sidecar changed after validation: {subtitle.path}"
                 )
 
     @staticmethod
