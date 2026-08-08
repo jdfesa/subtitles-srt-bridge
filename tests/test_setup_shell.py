@@ -127,6 +127,13 @@ exit 1
         self.assertNotIn("brew", content)
         self.assertNotIn("llvm", content.casefold())
 
+    def test_setup_enforces_the_documented_python_range(self):
+        content = (PROJECT_ROOT / "setup.sh").read_text(encoding="utf-8")
+
+        self.assertEqual(content.count("(3, 10) <= sys.version_info < (3, 14)"), 2)
+        self.assertIn("Python 3.10 through 3.13 is required", content)
+        self.assertNotIn("requirements-legacy.txt", content)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -195,7 +195,7 @@ class WhisperSpeechRecognizerTests(unittest.TestCase):
 
         with self.assertRaisesRegex(
             TranscriptionDependencyError,
-            "/custom/.venv/bin/python.*openai-whisper",
+            "/custom/.venv/bin/python.*openai-whisper==20250625",
         ):
             recognizer.transcribe(Path("selected.wav"))
 

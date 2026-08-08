@@ -93,12 +93,15 @@ class RuntimeDoctor:
         python_version: tuple[int, int, int] | None = None,
         python_version_text: str | None = None,
         minimum_python: tuple[int, int] = (3, 10),
+        maximum_python_exclusive: tuple[int, int] = (3, 14),
         command_timeout_seconds: float = 10.0,
     ) -> None:
         if not model_name.strip():
             raise ValueError("Diagnostic Whisper model cannot be empty")
         if command_timeout_seconds <= 0:
             raise ValueError("Diagnostic command timeout must be positive")
+        if maximum_python_exclusive <= minimum_python:
+            raise ValueError("Diagnostic Python range must be increasing")
         self.model_checker = model_checker
         self.model_name = model_name
         self.command_locator = command_locator
@@ -112,6 +115,7 @@ class RuntimeDoctor:
         )
         self.python_version_text = python_version_text or platform.python_version()
         self.minimum_python = minimum_python
+        self.maximum_python_exclusive = maximum_python_exclusive
         self.command_timeout_seconds = command_timeout_seconds
 
     def inspect(self) -> DiagnosticReport:
@@ -122,13 +126,24 @@ class RuntimeDoctor:
 
     def _python_check(self) -> DiagnosticCheck:
         minimum = ".".join(str(item) for item in self.minimum_python)
-        if self.python_version[:2] < self.minimum_python:
+        maximum = ".".join(
+            str(item)
+            for item in (
+                self.maximum_python_exclusive[0],
+                self.maximum_python_exclusive[1] - 1,
+            )
+        )
+        if not (
+            self.minimum_python
+            <= self.python_version[:2]
+            < self.maximum_python_exclusive
+        ):
             return DiagnosticCheck(
                 "python",
                 DiagnosticStatus.ERROR,
                 (
                     f"Python {self.python_version_text} at {self.python_executable}; "
-                    f"Python {minimum} or newer is required"
+                    f"Python {minimum} through {maximum} is required"
                 ),
             )
         return DiagnosticCheck(
@@ -136,7 +151,7 @@ class RuntimeDoctor:
             DiagnosticStatus.OK,
             (
                 f"Python {self.python_version_text} at {self.python_executable} "
-                f"(minimum {minimum})"
+                f"(supported {minimum} through {maximum})"
             ),
         )
 

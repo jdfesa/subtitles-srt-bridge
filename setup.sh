@@ -10,12 +10,12 @@ echo "🔹 Setting up environment for Subtitles Bridge..."
 
 if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
     echo "❌ Python 3 is not available: $PYTHON_BIN"
-    echo "   Install Python 3.10 or newer with the method appropriate for your platform."
+    echo "   Install Python 3.10 through 3.13 with the method appropriate for your platform."
     exit 1
 fi
 
-if ! PYTHON_VERSION=$("$PYTHON_BIN" -c 'import platform, sys; print(platform.python_version()); raise SystemExit(0 if sys.version_info >= (3, 10) else 1)'); then
-    echo "❌ Python $PYTHON_VERSION is too old. Python 3.10 or newer is required."
+if ! PYTHON_VERSION=$("$PYTHON_BIN" -c 'import platform, sys; print(platform.python_version()); raise SystemExit(0 if (3, 10) <= sys.version_info < (3, 14) else 1)'); then
+    echo "❌ Python $PYTHON_VERSION is unsupported. Python 3.10 through 3.13 is required."
     exit 1
 fi
 echo "✅ Python $PYTHON_VERSION: $PYTHON_BIN"
@@ -55,8 +55,8 @@ if [ ! -x "$VENV_PYTHON" ]; then
     exit 1
 fi
 
-if ! VENV_PYTHON_VERSION=$("$VENV_PYTHON" -c 'import platform, sys; print(platform.python_version()); raise SystemExit(0 if sys.version_info >= (3, 10) else 1)'); then
-    echo "❌ Virtual environment uses Python $VENV_PYTHON_VERSION; Python 3.10 or newer is required."
+if ! VENV_PYTHON_VERSION=$("$VENV_PYTHON" -c 'import platform, sys; print(platform.python_version()); raise SystemExit(0 if (3, 10) <= sys.version_info < (3, 14) else 1)'); then
+    echo "❌ Virtual environment uses unsupported Python $VENV_PYTHON_VERSION; Python 3.10 through 3.13 is required."
     echo "   Recreate $VENV_DIR with a compatible interpreter."
     exit 1
 fi

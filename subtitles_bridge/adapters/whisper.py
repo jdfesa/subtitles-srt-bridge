@@ -120,7 +120,8 @@ class WhisperSpeechRecognizer:
             return self.module_loader("whisper")
         except ImportError as exc:
             command = (
-                f'"{self.python_executable}" -m pip install openai-whisper'
+                f'"{self.python_executable}" -m pip install '
+                "openai-whisper==20250625"
             )
             raise TranscriptionDependencyError(
                 "Whisper is not installed in the active Python environment "

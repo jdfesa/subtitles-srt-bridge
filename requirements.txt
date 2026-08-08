@@ -1,6 +1,3 @@
-openai-whisper
-deep-translator
-numpy==1.26.4
-# Pin specific versions compatible with LLVM 15 (installed by homebrew)
-llvmlite==0.43.0
-numba==0.60.0
+# Direct dependency of the supported pipeline. Whisper resolves its
+# platform-specific transitive dependencies (Torch, NumPy, Numba, and others).
+openai-whisper==20250625

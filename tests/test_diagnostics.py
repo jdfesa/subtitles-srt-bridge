@@ -114,8 +114,35 @@ class RuntimeDoctorTests(unittest.TestCase):
         report = doctor.inspect()
 
         self.assertEqual(report.exit_code, 1)
-        self.assertIn("3.10 or newer", report.checks[0].message)
+        self.assertIn("3.10 through 3.13", report.checks[0].message)
         self.assertIn("OSError: cannot execute", report.checks[1].message)
+
+    def test_python_newer_than_supported_range_is_an_actionable_error(self):
+        doctor = RuntimeDoctor(
+            lambda: Path("/cache/small.pt"),
+            model_name="small",
+            command_locator=self.locator,
+            runner=self.successful_runner,
+            python_executable="/new/python",
+            python_version=(3, 14, 0),
+            python_version_text="3.14.0",
+        )
+
+        report = doctor.inspect()
+
+        self.assertEqual(report.exit_code, 1)
+        self.assertEqual(report.checks[0].status, DiagnosticStatus.ERROR)
+        self.assertIn("3.10 through 3.13", report.checks[0].message)
+
+    def test_latest_supported_python_minor_is_ready(self):
+        doctor = self.make_doctor()
+        doctor.python_version = (3, 13, 9)
+        doctor.python_version_text = "3.13.9"
+
+        report = doctor.inspect()
+
+        self.assertEqual(report.checks[0].status, DiagnosticStatus.OK)
+        self.assertIn("supported 3.10 through 3.13", report.checks[0].message)
 
     def test_application_formats_deterministic_report(self):
         written = []
