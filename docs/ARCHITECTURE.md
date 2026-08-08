@@ -311,6 +311,27 @@ siendo un wrapper de conveniencia y delega el diagnóstico final a la misma CLI,
 por lo que la lógica de salud no queda encerrada en shell ni se vuelve exclusiva
 de macOS.
 
+## Extensión P1.4: política de dependencias
+
+P1.4 separa las dependencias según el límite arquitectónico que ya existía
+entre el flujo objetivo y los prototipos:
+
+| Archivo o módulo | Responsabilidad |
+| --- | --- |
+| `requirements.txt` | Fijar la única dependencia directa del pipeline: `openai-whisper==20250625`. |
+| `requirements-legacy.txt` | Reproducir opcionalmente el backend Google del traductor histórico. |
+| `diagnostics.py` | Rechazar intérpretes fuera de CPython 3.10-3.13. |
+| `setup.sh` | Instalar únicamente el flujo principal dentro de la misma matriz de Python. |
+
+NumPy, Numba, llvmlite, PyTorch y las demás librerías numéricas no son
+dependencias directas del paquete: las declara Whisper y pip las resuelve para
+la plataforma activa. Evitar pins transitivos heredados conserva la
+portabilidad; una congelación completa deberá modelar por separado Python,
+sistema operativo y acelerador cuando exista una estrategia de distribución.
+
+El paquete `subtitles_bridge` no importa el traductor legado. Su dependencia de
+red queda fuera del setup, del doctor y de la CLI principal.
+
 ## Pruebas
 
 Los modelos, rutas, puertos, discovery y planner se prueban con `unittest`,

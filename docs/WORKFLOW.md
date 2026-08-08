@@ -652,7 +652,7 @@ descarga modelos, no inspecciona videos y no modifica `output/`, `staging/` o
 
 El diagnóstico comprueba, en orden:
 
-1. que el intérprete activo sea Python 3.10 o posterior;
+1. que el intérprete activo pertenezca a la matriz soportada por P1.4;
 2. que `ffmpeg` exista en `PATH` y responda correctamente a `-version`;
 3. que `ffprobe` exista en `PATH` y responda correctamente a `-version`;
 4. que el modelo configurado de Whisper sea un checkpoint local válido o esté
@@ -681,6 +681,40 @@ no presupone que `brew` exista y no configura LLVM de forma global. Cuando
 falta FFmpeg, muestra una instrucción genérica para el gestor de paquetes de la
 plataforma; en macOS puede mencionar `brew install ffmpeg` únicamente si
 Homebrew ya está disponible, sin ejecutarlo automáticamente.
+
+## Dependencias reproducibles P1.4
+
+La instalación portable admite CPython 3.10 a 3.13 inclusive. Tanto
+`setup.sh` como `--doctor` deben fallar antes de procesar videos cuando el
+intérprete queda fuera de ese rango. Las versiones nuevas se incorporan solo
+después de validar el flujo y sus dependencias; no se consideran compatibles
+por omisión.
+
+`setup.sh` instala exclusivamente `requirements.txt`. Ese archivo contiene la
+dependencia directa y fijada del flujo objetivo:
+
+```text
+openai-whisper==20250625
+```
+
+Whisper conserva la responsabilidad de resolver NumPy, Numba, llvmlite,
+PyTorch y sus demás dependencias transitivas según Python y plataforma. El
+proyecto no conserva los pins heredados de una instalación Homebrew/LLVM ni
+promete un lock transitorio único para macOS, Linux, Windows, CPU y distintos
+aceleradores.
+
+El prototipo de traducción remota queda aislado en
+`requirements-legacy.txt`, con `deep-translator==1.11.4` fijado solamente para
+reproducir su backend Google histórico. No forma parte del setup, del doctor ni
+de la CLI principal. Quien decida ejecutarlo debe instalar ese archivo por
+separado y aceptar explícitamente el uso de red y el envío de texto al
+proveedor. Los backends LibreTranslate y DeepL mencionados por el prototipo no
+se declaran como soportados.
+
+Actualizar una dependencia directa exige cambiar su pin, ejecutar la suite
+offline completa y repetir el doctor y el smoke test aplicable. Una
+reproducción byte a byte de todo el entorno queda fuera de P1.4 hasta contar
+con matrices y artefactos por plataforma.
 
 ## Red y privacidad
 

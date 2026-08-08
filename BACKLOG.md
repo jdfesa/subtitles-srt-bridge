@@ -478,12 +478,43 @@ Hacer que la CLI represente correctamente el resultado de uno o varios videos.
   8.0.1; Whisper ausente se informó como `warning` y el doctor terminó con
   código `0` sin descargar ni crear archivos.
 
-### [ ] P1.4 Definir dependencias reproducibles
+### [x] P1.4 Definir dependencias reproducibles
 
 - Fijar o restringir dependencias directas.
 - Documentar versiones de Python soportadas.
 - Separar dependencias del flujo principal de backends opcionales o legados.
 - Eliminar dependencias de traducción si dejan de tener un uso confirmado.
+
+**Contrato documentado antes de implementar**
+
+- El flujo principal soportará CPython 3.10-3.13; setup y doctor rechazarán
+  versiones fuera de la matriz antes de procesar archivos.
+- `requirements.txt` fijará `openai-whisper==20250625` como única dependencia
+  directa del producto y no conservará pins transitivos específicos de
+  Homebrew, LLVM o una sola plataforma.
+- Whisper resolverá sus dependencias transitivas según Python y plataforma;
+  un lock completo por sistema queda fuera de esta fase.
+- `deep-translator==1.11.4` quedará aislado en
+  `requirements-legacy.txt` para el prototipo histórico. Setup, doctor y la
+  CLI principal no instalarán ni utilizarán traducción remota.
+- Cualquier actualización futura del pin directo requerirá suite offline,
+  doctor y smoke test antes de publicarse.
+
+**Resultado**
+
+- `requirements.txt` contiene únicamente `openai-whisper==20250625`; Whisper
+  vuelve a resolver sus transitivas según Python y plataforma, sin pins
+  heredados de Homebrew o LLVM.
+- `deep-translator==1.11.4` se trasladó a `requirements-legacy.txt`. El setup y
+  la CLI principal no lo instalan ni lo utilizan; su instalación manual queda
+  documentada como una operación de red del prototipo histórico.
+- Setup y doctor aplican la misma matriz CPython 3.10-3.13 y fallan con un
+  mensaje accionable fuera de ella.
+- Se agregaron siete pruebas de política, límites de Python, comandos de
+  reparación y aislamiento del setup; la suite completa ejecuta 210 casos con
+  11 `expectedFailure` legados.
+- El doctor real confirmó Python 3.12.11, FFmpeg 8.0.1, FFprobe 8.0.1 y el
+  checkpoint local `small`; `pip check` no encontró dependencias rotas.
 
 ### [ ] P1.5 Agregar checks automáticos
 
@@ -545,5 +576,5 @@ contenedor opcional solo cuando el uso fuera del clon lo justifique.
 7. Implementar cuarentena automática y resumen transaccional (P0.8-P0.9).
    **Completado.**
 8. Ejecutar P1 en incrementos pequeños.
-   **P1.3 completado; siguiente fase: P1.4.**
+   **P1.4 completado; siguiente fase: P1.5.**
 9. Repriorizar P2 solamente con evidencia de uso.

@@ -64,7 +64,7 @@ videos/
 
 ## Estado del proyecto
 
-Las fases P0.1-P0.9 y P1.3 están completas. La CLI Python ya conecta discovery,
+Las fases P0.1-P0.9 y P1.1-P1.4 están completas. La CLI Python ya conecta discovery,
 planner, transcripción fallback, remux, verificación, publicación, cuarentena,
 resumen y códigos de salida en un único flujo. `menu.sh` llama esa misma CLI y
 puede abrirse desde cualquier directorio sin confundir la raíz del repositorio
@@ -79,6 +79,10 @@ P1.3 agrega un diagnóstico portable de Python, FFmpeg, FFprobe y el checkpoint
 local de Whisper. `setup.sh` ya no intenta instalar Homebrew, LLVM ni paquetes
 del sistema: valida requisitos, prepara `.venv` y delega el diagnóstico a la
 misma CLI.
+
+P1.4 fija la dependencia directa del flujo principal, admite CPython 3.10 a
+3.13 y separa la traducción remota heredada para que la instalación normal no
+agregue backends de red ni pins transitivos específicos de una plataforma.
 
 ## Ejecución
 
@@ -129,8 +133,12 @@ el contrato completo. `trash/` nunca se fusiona, reemplaza ni vacía.
 /ruta/al/repositorio/setup.sh
 ```
 
-Requiere Python 3.10 o posterior, FFmpeg y FFprobe ya disponibles en `PATH`.
+Requiere CPython 3.10, 3.11, 3.12 o 3.13, además de FFmpeg y FFprobe ya
+disponibles en `PATH`.
 El script no instala paquetes del sistema ni descarga modelos automáticamente.
+Instala solamente [`requirements.txt`](requirements.txt), que fija
+`openai-whisper==20250625` y delega en Whisper la resolución de sus
+dependencias transitivas para la plataforma activa.
 
 El mismo diagnóstico puede ejecutarse sin modificar archivos:
 
@@ -145,6 +153,15 @@ el modelo predeterminado cuando se acepta usar red:
 
 ```bash
 "/ruta/al/repositorio/.venv/bin/python3" -c "import whisper; whisper.load_model('small')"
+```
+
+El prototipo histórico `local_translate_srt.py` no forma parte de ese setup.
+Para reproducir deliberadamente su backend Google —que usa red y puede enviar
+texto a un tercero— su dependencia aislada se instala por separado:
+
+```bash
+"/ruta/al/repositorio/.venv/bin/python3" -m pip install \
+  -r "/ruta/al/repositorio/requirements-legacy.txt"
 ```
 
 ## Pruebas
@@ -165,12 +182,12 @@ normal. Un `unexpected success` hace fallar la suite para evitar mantener una
 marca obsoleta.
 
 El inventario de esas reproducciones está en [`tests/README.md`](tests/README.md).
-La suite completa ejecuta 203 casos y mantiene 11 defectos del prototipo
+La suite completa ejecuta 210 casos y mantiene 11 defectos del prototipo
 legado como `expectedFailure`.
 
 ## Requisitos previstos
 
-- Python 3.10 o posterior;
+- CPython 3.10 a 3.13;
 - FFmpeg y FFprobe;
 - OpenAI Whisper para el caso sin subtítulos;
 - macOS como primera plataforma validada.

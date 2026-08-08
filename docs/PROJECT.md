@@ -239,9 +239,31 @@ en [`ARCHITECTURE.md`](ARCHITECTURE.md).
 - procesamiento recursivo o formatos adicionales;
 - edición manual, OCR de subtítulos gráficos o procesamiento distribuido.
 
-## Estado técnico observado (2026-08-06)
+## Política de runtime y dependencias P1.4
 
-El flujo objetivo implementa P0.1-P0.9 y P1.3. Quedan límites operativos
+El flujo principal soporta CPython 3.10, 3.11, 3.12 y 3.13. Una versión menor
+anterior o posterior queda fuera de la matriz soportada hasta que se valide de
+forma explícita; `setup.sh` y `--doctor` deben rechazarla con un mensaje
+accionable en lugar de intentar una instalación incierta.
+
+`requirements.txt` representa únicamente el flujo principal. Fija la versión
+directa de OpenAI Whisper que utiliza el adaptador local y deja que esa
+distribución declare sus dependencias transitivas multiplataforma. No fija
+NumPy, Numba, llvmlite, PyTorch u otras transitivas por una instalación
+específica: una congelación completa requeriría artefactos separados y
+validados por plataforma, versión de Python y acelerador.
+
+La traducción remota continúa fuera del flujo confirmado. El prototipo
+`local_translate_srt.py` permanece protegido por pruebas de caracterización,
+pero su backend histórico se declara en `requirements-legacy.txt`, no se
+instala mediante `setup.sh` y nunca se carga desde la CLI principal. Instalar
+ese archivo es una acción manual y consciente de que el texto puede enviarse a
+un tercero. P2.2 deberá reemplazar esta separación temporal por un contrato de
+traducción opcional antes de conectarla al producto.
+
+## Estado técnico observado (2026-08-08)
+
+El flujo objetivo implementa P0.1-P0.9 y P1.1-P1.4. Quedan límites operativos
 explícitos para las siguientes fases:
 
 - el parser SRT de traducción omite o altera bloques comunes;
