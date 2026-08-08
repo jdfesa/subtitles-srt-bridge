@@ -1,6 +1,6 @@
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 
 from subtitles_bridge.errors import VerificationError
 from subtitles_bridge.integrity import subtitle_sha256

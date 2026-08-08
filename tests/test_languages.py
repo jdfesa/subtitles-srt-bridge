@@ -1,5 +1,5 @@
-from pathlib import Path
 import unittest
+from pathlib import Path
 
 from subtitles_bridge.languages import (
     infer_subtitle_metadata,

@@ -1,7 +1,7 @@
 import os
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 
 from subtitles_bridge.adapters.filesystem_archive import (
     TransactionalInputArchiver,

@@ -23,7 +23,6 @@ from .models import (
 )
 from .paths import WorkspacePaths
 
-
 EXECUTION_STAGES = (
     PipelineStage.TRANSCRIBE,
     PipelineStage.MUX,
@@ -119,8 +118,7 @@ class BatchExecutor:
         if not batch_plan.is_executable:
             return BatchResult(
                 tuple(
-                    self._blocked_result(plan, batch_plan)
-                    for plan in batch_plan.videos
+                    self._blocked_result(plan, batch_plan) for plan in batch_plan.videos
                 ),
                 batch_plan.issues,
                 "Batch execution is blocked until all issues are resolved",
@@ -153,7 +151,7 @@ class BatchExecutor:
         for position, stage in enumerate(EXECUTION_STAGES):
             try:
                 decision = plan.decision_for(stage)
-            except KeyError as exc:
+            except KeyError:
                 return self._failed_result(
                     plan,
                     stage,
@@ -274,9 +272,7 @@ class BatchExecutor:
             for decision in plan.decisions
             if decision.action is StageAction.NEEDS_INPUT
         ]
-        blockers.extend(
-            f"{issue.path}: {issue.message}" for issue in batch_plan.issues
-        )
+        blockers.extend(f"{issue.path}: {issue.message}" for issue in batch_plan.issues)
         if not blockers:
             blockers.append("Another video has unresolved planning decisions")
         message = "; ".join(dict.fromkeys(blockers))
@@ -351,8 +347,7 @@ class BatchExecutor:
         outputs: Sequence[PublishedOutput],
     ) -> dict[str, PublishedOutput]:
         plans = {
-            cls._source_key(plan.inventory.source): plan
-            for plan in batch_plan.videos
+            cls._source_key(plan.inventory.source): plan for plan in batch_plan.videos
         }
         result: dict[str, PublishedOutput] = {}
         for output in outputs:

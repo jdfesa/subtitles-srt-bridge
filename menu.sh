@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuration
-PROJECT_ROOT="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 VENV_DIR="$PROJECT_ROOT/.venv"
 VENV_PYTHON="$VENV_DIR/bin/python3"
 CLI_SCRIPT="$PROJECT_ROOT/subtitles_bridge_cli.py"
@@ -32,7 +32,7 @@ run_setup() {
         read -r answer
         if [[ "$answer" != "s" && "$answer" != "S" ]]; then
             echo "Operación cancelada."
-            read -p "Presiona Enter para volver al menú..."
+            read -r -p "Presiona Enter para volver al menú..."
             return
         fi
     fi
@@ -42,19 +42,21 @@ run_setup() {
         setup_status=$?
         echo -e "${RED}❌ La instalación no se completó (código $setup_status).${NC}"
     fi
-    read -p "Presiona Enter para continuar..."
+    read -r -p "Presiona Enter para continuar..."
 }
 
 run_process() {
     if [ ! -x "$VENV_PYTHON" ]; then
         echo -e "${RED}❌ Error: No se encontró el entorno virtual.${NC}"
         echo "Por favor, ejecuta la opción '1. Instalar / Configurar' primero."
-        read -p "Presiona Enter para volver al menú..."
+        read -r -p "Presiona Enter para volver al menú..."
         return
     fi
 
     echo -e "${GREEN}Introduce la ruta del directorio de videos (o presiona Enter para usar el actual):${NC}"
     # Terminal drag-and-drop may escape spaces with backslashes.
+    # Drag-and-drop paths arrive with shell-escaped spaces; read must unescape them.
+    # shellcheck disable=SC2162
     IFS= read target_dir
 
     if [ -z "$target_dir" ]; then
@@ -68,7 +70,7 @@ run_process() {
         process_status=$?
         echo -e "\n${RED}❌ Proceso no completado (código $process_status).${NC}"
     fi
-    read -p "Presiona Enter para volver al menú..."
+    read -r -p "Presiona Enter para volver al menú..."
 }
 
 run_clean() {
@@ -90,7 +92,7 @@ run_clean() {
     else
         echo "Operación cancelada."
     fi
-    read -p "Presiona Enter para volver al menú..."
+    read -r -p "Presiona Enter para volver al menú..."
 }
 
 show_help() {
@@ -109,19 +111,25 @@ show_help() {
     echo ""
     echo "Simplemente sigue las instrucciones en pantalla."
     echo "---------------------------------------------------------"
-    read -p "Presiona Enter para volver al menú..."
+    read -r -p "Presiona Enter para volver al menú..."
 }
 
 # Main Loop
 while true; do
     show_menu
-    read -p "Selecciona una opción (1-5): " choice
+    read -r -p "Selecciona una opción (1-5): " choice
     case $choice in
         1) run_setup ;;
         2) run_process ;;
         3) run_clean ;;
         4) show_help ;;
-        5) echo "Adiós! 👋"; exit 0 ;;
-        *) echo -e "${RED}Opción inválida.${NC}"; sleep 1 ;;
+        5)
+            echo "Adiós! 👋"
+            exit 0
+            ;;
+        *)
+            echo -e "${RED}Opción inválida.${NC}"
+            sleep 1
+            ;;
     esac
 done

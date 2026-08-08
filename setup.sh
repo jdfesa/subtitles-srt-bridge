@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PROJECT_ROOT="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 VENV_DIR="$PROJECT_ROOT/.venv"
 VENV_PYTHON="$VENV_DIR/bin/python3"
 CLI_SCRIPT="$PROJECT_ROOT/subtitles_bridge_cli.py"

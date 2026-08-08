@@ -1,9 +1,9 @@
 import argparse
+import tempfile
+import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 from pathlib import Path
-import tempfile
-import unittest
 from unittest.mock import patch
 
 import local_translate_srt
@@ -36,12 +36,7 @@ class TranslateSrtTests(unittest.TestCase):
     @unittest.expectedFailure
     def test_preserves_multiline_text_inside_a_matched_block(self):
         """P0.1 reproduction: the regex does not enable dot-all matching."""
-        content = (
-            "1\n"
-            "00:00:00,000 --> 00:00:01,000\n"
-            "First line\n"
-            "<i>Second line</i>"
-        )
+        content = "1\n00:00:00,000 --> 00:00:01,000\nFirst line\n<i>Second line</i>"
 
         with patch("local_translate_srt.time.sleep"):
             result = local_translate_srt.translate_srt(content, sleep_duration=0)

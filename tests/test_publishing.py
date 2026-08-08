@@ -1,7 +1,7 @@
-from dataclasses import replace
-from pathlib import Path
 import tempfile
 import unittest
+from dataclasses import replace
+from pathlib import Path
 
 from subtitles_bridge.batch_planner import BatchPlanner
 from subtitles_bridge.errors import PublicationCollisionError, PublicationError

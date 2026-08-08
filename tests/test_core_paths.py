@@ -1,7 +1,7 @@
 import os
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 
 from subtitles_bridge.errors import InputPathError, SourceVideoError
 from subtitles_bridge.paths import WorkspacePaths

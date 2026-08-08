@@ -7,7 +7,6 @@ from pathlib import Path
 
 from .errors import InputPathError, SourceVideoError
 
-
 VIDEO_EXTENSIONS = frozenset({".mp4", ".mkv"})
 
 
@@ -21,7 +20,9 @@ class WorkspacePaths:
         try:
             root = candidate.resolve(strict=True)
         except FileNotFoundError as exc:
-            raise InputPathError(f"Input directory does not exist: {candidate}") from exc
+            raise InputPathError(
+                f"Input directory does not exist: {candidate}"
+            ) from exc
 
         if not root.is_dir():
             raise InputPathError(f"Input path is not a directory: {root}")

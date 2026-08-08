@@ -1,7 +1,6 @@
-from pathlib import Path
 import re
 import unittest
-
+from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -26,6 +25,27 @@ class DependencyPolicyTests(unittest.TestCase):
             declared_requirements("requirements-legacy.txt"),
             ["deep-translator==1.11.4"],
         )
+
+    def test_development_dependency_is_isolated_and_pinned(self):
+        self.assertEqual(
+            declared_requirements("requirements-dev.txt"),
+            ["ruff==0.15.22"],
+        )
+        setup = (PROJECT_ROOT / "setup.sh").read_text(encoding="utf-8")
+        self.assertNotIn("requirements-dev.txt", setup)
+
+    def test_quality_gate_and_ci_share_pinned_tool_versions(self):
+        quality_gate = (PROJECT_ROOT / "tools/check.py").read_text(encoding="utf-8")
+        workflow = (PROJECT_ROOT / ".github/workflows/checks.yml").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("0.15.22", quality_gate)
+        self.assertIn("requirements-dev.txt", workflow)
+        for tool_version in ("0.11.0", "3.13.1"):
+            with self.subTest(tool_version=tool_version):
+                self.assertIn(tool_version, quality_gate)
+                self.assertIn(tool_version, workflow)
 
     def test_main_requirements_do_not_pin_whisper_transitive_dependencies(self):
         content = "\n".join(declared_requirements("requirements.txt")).casefold()

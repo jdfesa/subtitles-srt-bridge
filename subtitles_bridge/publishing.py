@@ -130,6 +130,4 @@ class PublishingStage:
             stat.st_size != verified_output.size_bytes
             or stat.st_mtime_ns != verified_output.modified_time_ns
         ):
-            raise PublicationError(
-                f"Staged output changed after verification: {path}"
-            )
+            raise PublicationError(f"Staged output changed after verification: {path}")

@@ -1,18 +1,17 @@
 import os
-from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 
+from subtitles_bridge.adapters.whisper import WhisperConfig
 from subtitles_bridge.bootstrap import (
     build_default_doctor_application,
     build_default_workspace_application,
 )
 from subtitles_bridge.cli import main
-from subtitles_bridge.adapters.whisper import WhisperConfig
 from subtitles_bridge.workspace_application import AudioSelection, WorkspaceApplication
-
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -136,9 +135,7 @@ class CliTests(unittest.TestCase):
                 "--whisper-device",
                 "mps",
             ],
-            application_factory=lambda config: (
-                configs.append(config) or application
-            ),
+            application_factory=lambda config: configs.append(config) or application,
             write=lambda _: None,
         )
 

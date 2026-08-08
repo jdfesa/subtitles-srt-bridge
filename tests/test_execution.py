@@ -1,9 +1,9 @@
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 
 from subtitles_bridge.batch_planner import BatchPlanner
-from subtitles_bridge.execution import BatchExecutor, EXECUTION_STAGES
+from subtitles_bridge.execution import EXECUTION_STAGES, BatchExecutor
 from subtitles_bridge.models import (
     ArchivedInputs,
     ArtifactState,
@@ -47,9 +47,7 @@ class FakePipeline:
     def __init__(self):
         self.calls = []
         self.failures = {}
-        self.stages = {
-            stage: FakeStage(self, stage) for stage in EXECUTION_STAGES
-        }
+        self.stages = {stage: FakeStage(self, stage) for stage in EXECUTION_STAGES}
 
     def executor(self):
         return BatchExecutor(
@@ -81,8 +79,7 @@ class FakePipeline:
                 SubtitleOrigin.GENERATED,
                 ArtifactState.VALID,
                 language="eng",
-                path=paths.staging_directory
-                / f"{source.stem}.generated.eng.srt",
+                path=paths.staging_directory / f"{source.stem}.generated.eng.srt",
                 validation=SubtitleValidation(True, 1, "utf-8"),
             )
         if stage is PipelineStage.MUX:
@@ -90,9 +87,7 @@ class FakePipeline:
         if stage is PipelineStage.VERIFY:
             generated = kwargs.get("generated_subtitle")
             expected = (
-                (generated,)
-                if generated is not None
-                else plan.selected_subtitles
+                (generated,) if generated is not None else plan.selected_subtitles
             )
             return VerifiedOutput(
                 source,

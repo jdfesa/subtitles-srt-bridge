@@ -1,9 +1,9 @@
-from hashlib import sha256
-from pathlib import Path
-from types import SimpleNamespace
 import tempfile
 import unittest
 import wave
+from hashlib import sha256
+from pathlib import Path
+from types import SimpleNamespace
 
 from subtitles_bridge.adapters.whisper import (
     WhisperConfig,

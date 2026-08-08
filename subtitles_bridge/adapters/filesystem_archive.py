@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
 import os
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from ..errors import (
@@ -12,7 +12,6 @@ from ..errors import (
     ArchivingPartialError,
 )
 from ..models import ArchivedInputs
-
 
 Mover = Callable[[Path, Path], None]
 Snapshot = tuple[int, int]
@@ -88,9 +87,7 @@ class TransactionalInputArchiver:
     ) -> None:
         target_names = [target.name.casefold() for target in targets]
         if len(target_names) != len(set(target_names)):
-            raise ArchivingCollisionError(
-                "Archive inputs share a destination filename"
-            )
+            raise ArchivingCollisionError("Archive inputs share a destination filename")
         destination_route = destination.resolve()
         if any(path.resolve() == destination_route for path in inputs):
             raise ArchivingError("Archive destination cannot be an input")

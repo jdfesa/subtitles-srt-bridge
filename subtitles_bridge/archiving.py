@@ -53,9 +53,7 @@ class ArchivingStage:
         if decision.action is StageAction.SKIP:
             return None
         if decision.action is StageAction.NEEDS_INPUT or not plan.is_executable:
-            raise ArchivingError(
-                f"Archiving plan is not executable: {decision.reason}"
-            )
+            raise ArchivingError(f"Archiving plan is not executable: {decision.reason}")
         if published_output is None:
             raise ArchivingError("Archiving requires a published output proof")
 

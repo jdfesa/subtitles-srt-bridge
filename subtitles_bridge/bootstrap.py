@@ -10,8 +10,8 @@ from .adapters.filesystem_publish import AtomicOutputPublisher
 from .adapters.whisper import WhisperConfig, WhisperSpeechRecognizer
 from .archiving import ArchivingStage
 from .batch_planner import BatchPlanner
-from .discovery import WorkspaceDiscovery
 from .diagnostics import DoctorApplication, RuntimeDoctor
+from .discovery import WorkspaceDiscovery
 from .execution import BatchExecutor
 from .muxing import MuxingStage
 from .publishing import PublishingStage

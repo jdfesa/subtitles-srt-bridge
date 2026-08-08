@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
+import subprocess
 from collections.abc import Callable
 from pathlib import Path
-import subprocess
 
 from ..errors import AudioExtractionError, StagingCollisionError
 from ..models import MediaStream, StreamKind
-
 
 Runner = Callable[..., subprocess.CompletedProcess[str]]
 

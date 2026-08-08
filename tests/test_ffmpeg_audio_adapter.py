@@ -1,7 +1,7 @@
-from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from pathlib import Path
 
 from subtitles_bridge.adapters.ffmpeg_audio import FFmpegAudioExtractor
 from subtitles_bridge.errors import AudioExtractionError, StagingCollisionError

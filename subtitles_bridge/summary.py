@@ -51,9 +51,7 @@ def format_video_plan(plan: VideoPlan) -> str:
     if inventory.audio_streams:
         lines.append(
             "Audio: "
-            + ", ".join(
-                _format_audio(stream) for stream in inventory.audio_streams
-            )
+            + ", ".join(_format_audio(stream) for stream in inventory.audio_streams)
         )
     else:
         lines.append("Audio: none")
@@ -134,9 +132,7 @@ def format_batch_result(result: BatchResult) -> str:
         ResultStatus.PARTIAL,
         ResultStatus.FAILED,
     )
-    counts = ", ".join(
-        f"{status.value}={result.count(status)}" for status in statuses
-    )
+    counts = ", ".join(f"{status.value}={result.count(status)}" for status in statuses)
     lines = [
         f"Batch result: {result.status.value}",
         f"Videos: {len(result.videos)}",

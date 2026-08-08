@@ -1,6 +1,6 @@
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 
 from subtitles_bridge.srt import SrtValidator
 
@@ -17,10 +17,7 @@ class SrtValidatorTests(unittest.TestCase):
         variants = (
             b"1\n00:00:00,000 --> 00:00:01,000\nHello",
             b"1\r\n00:00:00,000 --> 00:00:01,000\r\nHello\r\n",
-            (
-                b"1\n00:00:00,000 --> 00:00:01,000\n"
-                b"First line\n<i>Second line</i>\n"
-            ),
+            (b"1\n00:00:00,000 --> 00:00:01,000\nFirst line\n<i>Second line</i>\n"),
         )
 
         for data in variants:
@@ -66,9 +63,7 @@ class SrtValidatorTests(unittest.TestCase):
                 self.assertTrue(result.error)
 
     def test_rejects_non_numeric_index(self):
-        result = self.validate_bytes(
-            b"one\n00:00:00,000 --> 00:00:01,000\nHello"
-        )
+        result = self.validate_bytes(b"one\n00:00:00,000 --> 00:00:01,000\nHello")
 
         self.assertFalse(result.is_valid)
         self.assertIn("non-numeric index", result.error)
@@ -87,9 +82,7 @@ class SrtValidatorTests(unittest.TestCase):
                 self.assertIn(expected_error, result.error)
 
     def test_rejects_cue_without_text(self):
-        result = self.validate_bytes(
-            b"1\n00:00:00,000 --> 00:00:01,000\n   "
-        )
+        result = self.validate_bytes(b"1\n00:00:00,000 --> 00:00:01,000\n   ")
 
         self.assertFalse(result.is_valid)
         self.assertIn("no subtitle text", result.error)

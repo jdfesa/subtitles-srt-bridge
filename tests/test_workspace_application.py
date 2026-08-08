@@ -1,6 +1,6 @@
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 
 from subtitles_bridge.models import (
     BatchPlan,
@@ -21,7 +21,6 @@ from subtitles_bridge.models import (
     VideoResult,
 )
 from subtitles_bridge.workspace_application import AudioSelection, WorkspaceApplication
-
 
 EXECUTION_STAGES = (
     PipelineStage.TRANSCRIBE,
@@ -269,9 +268,7 @@ class WorkspaceApplicationTests(unittest.TestCase):
                 (MediaStream(0, StreamKind.VIDEO, "h264"),),
                 "matroska",
             )
-            proof = PublishedOutput(
-                source.resolve(), output, inspection, (), 10, 20
-            )
+            proof = PublishedOutput(source.resolve(), output, inspection, (), 10, 20)
             decisions = tuple(
                 PlanDecision(stage, StageAction.SKIP, "Verified")
                 for stage in EXECUTION_STAGES

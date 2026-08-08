@@ -1,13 +1,12 @@
-from contextlib import redirect_stdout
-from io import StringIO
-from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from contextlib import redirect_stdout
+from io import StringIO
+from pathlib import Path
 from unittest.mock import patch
 
 import process_videos
-
 
 VALID_SRT = "1\n00:00:00,000 --> 00:00:01,000\nHello\n"
 

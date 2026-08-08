@@ -1,14 +1,14 @@
 import os
-from pathlib import Path
 import shutil
 import subprocess
 import tempfile
 import unittest
-
+from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
+@unittest.skipIf(os.name == "nt", "Bash wrapper tests require macOS or Linux")
 class MenuShellTests(unittest.TestCase):
     def test_menu_does_not_announce_success_for_failed_process(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -22,7 +22,7 @@ class MenuShellTests(unittest.TestCase):
             fake_python = root / ".venv" / "bin" / "python3"
             fake_python.parent.mkdir(parents=True)
             fake_python.write_text(
-                "#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$TRACE_FILE\"\nexit 1\n",
+                '#!/bin/sh\nprintf \'%s\\n\' "$@" > "$TRACE_FILE"\nexit 1\n',
                 encoding="utf-8",
             )
             fake_python.chmod(0o755)

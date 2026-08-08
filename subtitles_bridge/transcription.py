@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable, Iterable
 from pathlib import Path
-import re
 from uuid import uuid4
 
 from .errors import (
@@ -13,8 +13,8 @@ from .errors import (
     SubtitleBridgeError,
     TranscriptionError,
 )
-from .languages import normalize_trusted_language
 from .integrity import subtitle_sha256
+from .languages import normalize_trusted_language
 from .models import (
     ArtifactState,
     BatchPlan,
@@ -33,7 +33,6 @@ from .ports import (
     SubtitleTranscriber,
     SubtitleValidator,
 )
-
 
 TemporaryAudioFactory = Callable[[Path], Path]
 
@@ -101,8 +100,7 @@ def find_existing_generated_subtitle(
     validation = validator.validate(candidate)
     if not validation.is_valid:
         raise StagingCollisionError(
-            f"Existing generated subtitle is invalid: {candidate}: "
-            f"{validation.error}"
+            f"Existing generated subtitle is invalid: {candidate}: {validation.error}"
         )
     language = _generated_candidate_language(candidate, destination)
     return SubtitleArtifact(
@@ -257,7 +255,9 @@ class StagedSubtitleTranscriber:
         if temporary_audio.suffix.casefold() != ".wav":
             raise TranscriptionError("Temporary audio must use the .wav extension")
         if temporary_audio.resolve() in {source.resolve(), destination.resolve()}:
-            raise TranscriptionError("Temporary audio path conflicts with an input path")
+            raise TranscriptionError(
+                "Temporary audio path conflicts with an input path"
+            )
 
     @staticmethod
     def _remove_created_paths(paths: Iterable[Path]) -> str | None:

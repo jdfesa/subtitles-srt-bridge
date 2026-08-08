@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from dataclasses import dataclass
-from enum import Enum
-from pathlib import Path
 import platform
 import shutil
 import subprocess
 import sys
-
+from collections.abc import Callable
+from dataclasses import dataclass
+from enum import Enum
+from pathlib import Path
 
 CommandLocator = Callable[[str], str | None]
 CommandRunner = Callable[..., subprocess.CompletedProcess[str]]

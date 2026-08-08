@@ -1,10 +1,9 @@
 import os
-from pathlib import Path
 import shutil
 import subprocess
 import tempfile
 import unittest
-
+from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -14,6 +13,7 @@ def write_executable(path, content):
     path.chmod(0o755)
 
 
+@unittest.skipIf(os.name == "nt", "Bash wrapper tests require macOS or Linux")
 class SetupShellTests(unittest.TestCase):
     def test_setup_uses_script_root_and_runs_portable_doctor(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -96,7 +96,7 @@ exit 1
             fake_bin.mkdir()
             write_executable(
                 fake_bin / "python3",
-                "#!/bin/sh\n[ \"$1\" = \"-c\" ] && echo 3.12.2 && exit 0\nexit 1\n",
+                '#!/bin/sh\n[ "$1" = "-c" ] && echo 3.12.2 && exit 0\nexit 1\n',
             )
             write_executable(
                 fake_bin / "ffprobe",

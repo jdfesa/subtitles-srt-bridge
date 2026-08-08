@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import re
+from pathlib import Path
 
 from .models import SubtitleValidation
-
 
 TIMESTAMP_RE = re.compile(
     r"^\s*(\d+):(\d{2}):(\d{2}),(\d{3})\s*-->\s*"

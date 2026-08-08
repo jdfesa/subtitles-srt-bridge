@@ -1,6 +1,6 @@
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 
 from subtitles_bridge.discovery import (
     WorkspaceDiscovery,
@@ -19,7 +19,6 @@ from subtitles_bridge.models import (
 )
 from subtitles_bridge.paths import WorkspacePaths
 from subtitles_bridge.srt import SrtValidator
-
 
 VALID_SRT = "1\n00:00:00,000 --> 00:00:01,000\nHello\n"
 
@@ -197,7 +196,10 @@ class WorkspaceDiscoveryTests(unittest.TestCase):
         )
         for inventory in result.inventories:
             self.assertFalse(
-                any(subtitle.path in {ambiguous, orphan} for subtitle in inventory.subtitles)
+                any(
+                    subtitle.path in {ambiguous, orphan}
+                    for subtitle in inventory.subtitles
+                )
             )
 
     def test_keeps_multiple_sidecars_with_the_same_language(self):
@@ -211,8 +213,7 @@ class WorkspaceDiscoveryTests(unittest.TestCase):
         english = [
             subtitle
             for subtitle in result.inventories[0].subtitles
-            if subtitle.origin is SubtitleOrigin.EXTERNAL
-            and subtitle.language == "eng"
+            if subtitle.origin is SubtitleOrigin.EXTERNAL and subtitle.language == "eng"
         ]
 
         self.assertEqual(len(english), 2)
@@ -273,9 +274,13 @@ class WorkspaceDiscoveryTests(unittest.TestCase):
 
         result = WorkspaceDiscovery(FakeProbe(), SrtValidator()).inspect(paths)
 
-        self.assertEqual(result.issues[0].kind, DiscoveryIssueKind.UNASSOCIATED_SUBTITLE)
+        self.assertEqual(
+            result.issues[0].kind, DiscoveryIssueKind.UNASSOCIATED_SUBTITLE
+        )
         self.assertFalse(
-            any(subtitle.path == sidecar for subtitle in result.inventories[0].subtitles)
+            any(
+                subtitle.path == sidecar for subtitle in result.inventories[0].subtitles
+            )
         )
 
     def test_marks_conflicting_language_metadata_as_ambiguous(self):

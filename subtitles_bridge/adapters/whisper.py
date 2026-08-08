@@ -2,22 +2,21 @@
 
 from __future__ import annotations
 
+import importlib
+import os
+import re
+import sys
+import wave
 from collections.abc import Callable
 from dataclasses import dataclass
 from hashlib import sha256
-import importlib
-import os
 from pathlib import Path
-import re
-import sys
 from typing import Any
 from urllib.parse import urlparse
-import wave
 
 from ..errors import TranscriptionDependencyError, TranscriptionError
 from ..languages import normalize_trusted_language
 from ..models import SpeechSegment, SpeechTranscript
-
 
 ModuleLoader = Callable[[str], Any]
 AudioLoader = Callable[[Path], Any]
@@ -120,8 +119,7 @@ class WhisperSpeechRecognizer:
             return self.module_loader("whisper")
         except ImportError as exc:
             command = (
-                f'"{self.python_executable}" -m pip install '
-                "openai-whisper==20250625"
+                f'"{self.python_executable}" -m pip install openai-whisper==20250625'
             )
             raise TranscriptionDependencyError(
                 "Whisper is not installed in the active Python environment "
@@ -164,10 +162,7 @@ class WhisperSpeechRecognizer:
         return cache_root / "whisper"
 
     def _missing_model_message(self, checkpoint: Path) -> str:
-        bootstrap = (
-            "import whisper; "
-            f"whisper.load_model({self.config.model!r})"
-        )
+        bootstrap = f"import whisper; whisper.load_model({self.config.model!r})"
         command = f'"{self.python_executable}" -c "{bootstrap}"'
         return (
             f"Whisper model is not available locally at {checkpoint}. "

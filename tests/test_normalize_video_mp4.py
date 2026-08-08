@@ -1,9 +1,9 @@
 import argparse
 import json
-from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from tools.normalize_video_mp4 import normalize_video_mp4 as normalizer

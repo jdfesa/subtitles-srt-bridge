@@ -1,6 +1,6 @@
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 
 from subtitles_bridge.adapters.filesystem_publish import AtomicOutputPublisher
 from subtitles_bridge.errors import PublicationCollisionError, PublicationError

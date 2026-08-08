@@ -1,7 +1,7 @@
 import json
-from pathlib import Path
 import subprocess
 import unittest
+from pathlib import Path
 
 from subtitles_bridge.adapters.ffprobe import FFprobeMediaProbe
 from subtitles_bridge.errors import MediaInspectionError
@@ -99,7 +99,11 @@ class FFprobeMediaProbeTests(unittest.TestCase):
             (completed("not json"), "invalid JSON"),
             (
                 completed(
-                    {"streams": [{"index": 0, "codec_type": "audio", "codec_name": "aac"}]}
+                    {
+                        "streams": [
+                            {"index": 0, "codec_type": "audio", "codec_name": "aac"}
+                        ]
+                    }
                 ),
                 "no video stream",
             ),
@@ -107,7 +111,9 @@ class FFprobeMediaProbeTests(unittest.TestCase):
 
         for result, message in cases:
             with self.subTest(message=message):
-                probe = FFprobeMediaProbe(runner=lambda *args, result=result, **kwargs: result)
+                probe = FFprobeMediaProbe(
+                    runner=lambda *args, result=result, **kwargs: result
+                )
                 with self.assertRaisesRegex(MediaInspectionError, message):
                     probe.inspect(Path("lesson.mkv"))
 

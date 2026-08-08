@@ -19,7 +19,6 @@ from .models import (
     VideoPlan,
 )
 
-
 EXECUTION_STAGES = (
     PipelineStage.TRANSCRIBE,
     PipelineStage.MUX,
@@ -53,8 +52,7 @@ def _archive_name_collision(inventory: VideoInventory) -> str | None:
     paths.extend(
         subtitle.path
         for subtitle in inventory.valid_subtitles
-        if subtitle.origin is SubtitleOrigin.EXTERNAL
-        and subtitle.path is not None
+        if subtitle.origin is SubtitleOrigin.EXTERNAL and subtitle.path is not None
     )
     groups: dict[str, list[Path]] = {}
     for path in paths:

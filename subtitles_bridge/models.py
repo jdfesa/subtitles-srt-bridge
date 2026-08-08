@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from enum import Enum
-import math
 from pathlib import Path
 
 
@@ -120,9 +120,7 @@ class SpeechSegment:
     text: str
 
     def __post_init__(self) -> None:
-        if not math.isfinite(self.start_seconds) or not math.isfinite(
-            self.end_seconds
-        ):
+        if not math.isfinite(self.start_seconds) or not math.isfinite(self.end_seconds):
             raise ValueError("Speech segment timestamps must be finite")
         if self.start_seconds < 0:
             raise ValueError("Speech segment start cannot be negative")
@@ -178,8 +176,7 @@ class SubtitleArtifact:
         if self.content_sha256 is not None and (
             len(self.content_sha256) != 64
             or any(
-                character not in "0123456789abcdef"
-                for character in self.content_sha256
+                character not in "0123456789abcdef" for character in self.content_sha256
             )
         ):
             raise ValueError(
@@ -279,8 +276,7 @@ class VerifiedOutput:
         if self.modified_time_ns < 0:
             raise ValueError("Verified output mtime cannot be negative")
         if not any(
-            stream.kind is StreamKind.VIDEO
-            for stream in self.inspection.streams
+            stream.kind is StreamKind.VIDEO for stream in self.inspection.streams
         ):
             raise ValueError("Verified output must contain a video stream")
         if any(
@@ -309,8 +305,7 @@ class PublishedOutput:
         if self.modified_time_ns < 0:
             raise ValueError("Published output mtime cannot be negative")
         if not any(
-            stream.kind is StreamKind.VIDEO
-            for stream in self.inspection.streams
+            stream.kind is StreamKind.VIDEO for stream in self.inspection.streams
         ):
             raise ValueError("Published output must contain a video stream")
         if any(
@@ -412,8 +407,7 @@ class VideoPlan:
     @property
     def has_needs_input(self) -> bool:
         return any(
-            decision.action is StageAction.NEEDS_INPUT
-            for decision in self.decisions
+            decision.action is StageAction.NEEDS_INPUT for decision in self.decisions
         )
 
     @property
@@ -469,9 +463,7 @@ class BatchResult:
     message: str = ""
 
     def __post_init__(self) -> None:
-        sources = [
-            str(video.source.resolve()).casefold() for video in self.videos
-        ]
+        sources = [str(video.source.resolve()).casefold() for video in self.videos]
         if len(sources) != len(set(sources)):
             raise ValueError("Batch results cannot contain duplicate videos")
 

@@ -5,15 +5,14 @@ from __future__ import annotations
 import argparse
 from collections.abc import Callable, Sequence
 
-from .application import format_fatal_result
 from .adapters.whisper import WhisperConfig
+from .application import format_fatal_result
 from .bootstrap import (
     build_default_doctor_application,
     build_default_workspace_application,
 )
 from .diagnostics import DoctorApplication, format_diagnostic_fatal
 from .workspace_application import AudioSelection, WorkspaceApplication, Writer
-
 
 ApplicationFactory = Callable[[WhisperConfig], WorkspaceApplication]
 DoctorFactory = Callable[[WhisperConfig], DoctorApplication]

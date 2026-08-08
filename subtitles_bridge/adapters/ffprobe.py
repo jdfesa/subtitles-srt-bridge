@@ -2,17 +2,16 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 import json
 import math
-from pathlib import Path
 import subprocess
+from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 from ..errors import MediaInspectionError
 from ..languages import normalize_language_code
 from ..models import MediaChapter, MediaInspection, MediaStream, StreamKind
-
 
 Runner = Callable[..., subprocess.CompletedProcess[str]]
 
@@ -95,7 +94,9 @@ class FFprobeMediaProbe:
         try:
             payload = json.loads(result.stdout)
         except (json.JSONDecodeError, TypeError) as exc:
-            raise MediaInspectionError(f"FFprobe returned invalid JSON for {source}") from exc
+            raise MediaInspectionError(
+                f"FFprobe returned invalid JSON for {source}"
+            ) from exc
         if not isinstance(payload, dict):
             raise MediaInspectionError(f"FFprobe returned invalid JSON for {source}")
 
@@ -134,7 +135,9 @@ class FFprobeMediaProbe:
             try:
                 index = int(raw_stream["index"])
             except (TypeError, ValueError) as exc:
-                raise MediaInspectionError("FFprobe returned an invalid stream index") from exc
+                raise MediaInspectionError(
+                    "FFprobe returned an invalid stream index"
+                ) from exc
 
             tags = raw_stream.get("tags") or {}
             if not isinstance(tags, dict):
@@ -143,9 +146,7 @@ class FFprobeMediaProbe:
             if not isinstance(dispositions_raw, dict):
                 dispositions_raw = {}
             dispositions = frozenset(
-                str(name)
-                for name, enabled in dispositions_raw.items()
-                if bool(enabled)
+                str(name) for name, enabled in dispositions_raw.items() if bool(enabled)
             )
             try:
                 streams.append(
@@ -190,7 +191,9 @@ class FFprobeMediaProbe:
             try:
                 chapter_index = int(raw_chapter.get("id", position))
             except (TypeError, ValueError) as exc:
-                raise MediaInspectionError("FFprobe returned an invalid chapter id") from exc
+                raise MediaInspectionError(
+                    "FFprobe returned an invalid chapter id"
+                ) from exc
             try:
                 chapters.append(
                     MediaChapter(

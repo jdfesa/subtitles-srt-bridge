@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
 import os
-from pathlib import Path
 import subprocess
+from collections.abc import Callable, Sequence
+from pathlib import Path
 from uuid import uuid4
 
 from ..errors import MuxingCollisionError, MuxingError, SubtitleIntegrityError
@@ -18,15 +18,12 @@ from ..models import (
     VideoInventory,
 )
 
-
 Runner = Callable[..., subprocess.CompletedProcess[str]]
 TemporaryOutputFactory = Callable[[Path], Path]
 
 
 def _temporary_output(destination: Path) -> Path:
-    return destination.with_name(
-        f".{destination.stem}.mux-{uuid4().hex}.mkv"
-    )
+    return destination.with_name(f".{destination.stem}.mux-{uuid4().hex}.mkv")
 
 
 def _sidecar_encoding(subtitle: SubtitleArtifact) -> str | None:
@@ -127,9 +124,7 @@ def build_ffmpeg_mux_command(
                 (f"-metadata:s:s:{output_index}", f"language={subtitle.language}")
             )
         if subtitle.title is not None and subtitle.title.strip():
-            command.extend(
-                (f"-metadata:s:s:{output_index}", f"title={subtitle.title}")
-            )
+            command.extend((f"-metadata:s:s:{output_index}", f"title={subtitle.title}"))
         if subtitle.content_sha256 is not None:
             command.extend(
                 (
@@ -140,9 +135,7 @@ def build_ffmpeg_mux_command(
 
     for output_index in range(embedded_count + len(sidecars)):
         command.extend((f"-disposition:s:{output_index}", "-default"))
-    command.extend(
-        ("-default_mode", "passthrough", "-f", "matroska", str(destination))
-    )
+    command.extend(("-default_mode", "passthrough", "-f", "matroska", str(destination)))
     return command
 
 
@@ -199,8 +192,7 @@ class FFmpegMediaMuxer:
             )
             if result.returncode != 0:
                 message = (
-                    result.stderr.strip()
-                    or "FFmpeg could not build the staged MKV"
+                    result.stderr.strip() or "FFmpeg could not build the staged MKV"
                 )
                 raise MuxingError(message)
             if not working_output.is_file() or working_output.stat().st_size == 0:
@@ -224,13 +216,9 @@ class FFmpegMediaMuxer:
         if not inventory.source.is_file():
             raise MuxingError(f"Source video is missing: {inventory.source}")
         if destination.exists() or destination.is_symlink():
-            raise MuxingCollisionError(
-                f"Staged output already exists: {destination}"
-            )
+            raise MuxingCollisionError(f"Staged output already exists: {destination}")
         if not destination.parent.is_dir():
-            raise MuxingError(
-                f"Staging directory does not exist: {destination.parent}"
-            )
+            raise MuxingError(f"Staging directory does not exist: {destination.parent}")
 
         sidecars = _validated_sidecars(inventory, subtitles)
         protected_paths = {inventory.source.resolve(), destination.resolve()}

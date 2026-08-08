@@ -25,7 +25,6 @@ from .muxing import planned_subtitles_for
 from .paths import WorkspacePaths
 from .ports import MediaProbe, OutputVerifier
 
-
 GLOBAL_VOLATILE_METADATA = frozenset(
     {
         "compatible_brands",
@@ -148,8 +147,7 @@ class OutputContractVerifier:
         expected_subtitles: Sequence[SubtitleArtifact],
     ) -> None:
         if any(
-            subtitle.state is not ArtifactState.VALID
-            for subtitle in expected_subtitles
+            subtitle.state is not ArtifactState.VALID for subtitle in expected_subtitles
         ):
             raise VerificationError("Expected subtitles must all be valid")
 
@@ -309,8 +307,10 @@ class OutputContractVerifier:
             raise VerificationError(
                 f"{label} changed language: {subtitle.language} -> {output.language}"
             )
-        if subtitle.title is not None and subtitle.title.strip() and (
-            output.title != subtitle.title
+        if (
+            subtitle.title is not None
+            and subtitle.title.strip()
+            and (output.title != subtitle.title)
         ):
             raise VerificationError(
                 f"{label} changed title: {subtitle.title!r} -> {output.title!r}"
@@ -335,9 +335,7 @@ class OutputContractVerifier:
             raise VerificationError("Source duration is unavailable")
         if inspection.duration_seconds is None:
             raise VerificationError("Output duration is unavailable")
-        difference = abs(
-            inventory.duration_seconds - inspection.duration_seconds
-        )
+        difference = abs(inventory.duration_seconds - inspection.duration_seconds)
         if difference > self.duration_tolerance_seconds:
             raise VerificationError(
                 "Duration mismatch: source "
@@ -370,9 +368,7 @@ class OutputContractVerifier:
                     f"Chapter #{position} time range was not preserved"
                 )
             if source.title != output.title:
-                raise VerificationError(
-                    f"Chapter #{position} title was not preserved"
-                )
+                raise VerificationError(f"Chapter #{position} title was not preserved")
             _require_metadata_subset(
                 source.metadata,
                 output.metadata,

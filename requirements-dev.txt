@@ -1,0 +1,2 @@
+# Development-only Python quality tool. Runtime setup does not install this file.
+ruff==0.15.22

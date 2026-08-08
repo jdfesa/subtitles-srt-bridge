@@ -1,7 +1,7 @@
-from dataclasses import replace
-from pathlib import Path
 import tempfile
 import unittest
+from dataclasses import replace
+from pathlib import Path
 
 from subtitles_bridge.batch_planner import BatchPlanner
 from subtitles_bridge.errors import VerificationError
@@ -453,9 +453,7 @@ class VerificationStageTests(unittest.TestCase):
         )
         verifier = RecordingVerifier(MediaInspection(inventory.streams))
 
-        self.assertIsNone(
-            VerificationStage(verifier).execute(resumed, source, paths)
-        )
+        self.assertIsNone(VerificationStage(verifier).execute(resumed, source, paths))
         self.assertEqual(verifier.calls, [])
 
         issue = DiscoveryIssue(

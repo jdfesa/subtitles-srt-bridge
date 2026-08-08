@@ -9,7 +9,6 @@ from .models import BatchPlan, BatchResult, PublishedOutput
 from .paths import WorkspacePaths
 from .summary import format_batch_result
 
-
 Writer = Callable[[str], None]
 
 

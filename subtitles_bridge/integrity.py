@@ -7,7 +7,6 @@ from pathlib import Path
 
 from .errors import SubtitleIntegrityError
 
-
 SUBTITLE_SHA256_METADATA_KEY = "subtitles_bridge_sha256"
 
 

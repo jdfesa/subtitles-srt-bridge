@@ -17,7 +17,6 @@ from .models import BatchPlan, DiscoveryResult, PlanningChoice, PublishedOutput
 from .paths import WorkspacePaths
 from .summary import format_batch_plan
 
-
 Writer = Callable[[str], None]
 
 

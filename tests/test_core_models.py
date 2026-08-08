@@ -1,6 +1,6 @@
+import unittest
 from dataclasses import FrozenInstanceError
 from pathlib import Path
-import unittest
 
 from subtitles_bridge.models import (
     ArchivedInputs,
@@ -166,9 +166,7 @@ class VideoInventoryTests(unittest.TestCase):
 
 class VerifiedOutputTests(unittest.TestCase):
     def test_is_immutable_and_requires_a_positive_mkv_snapshot(self):
-        inspection = MediaInspection(
-            (MediaStream(0, StreamKind.VIDEO, "h264"),)
-        )
+        inspection = MediaInspection((MediaStream(0, StreamKind.VIDEO, "h264"),))
         verified = VerifiedOutput(
             Path("lesson.mp4"),
             Path("staging/lesson.subtitled.mkv"),
@@ -191,9 +189,7 @@ class VerifiedOutputTests(unittest.TestCase):
             )
 
     def test_published_and_archived_proofs_preserve_routes(self):
-        inspection = MediaInspection(
-            (MediaStream(0, StreamKind.VIDEO, "h264"),)
-        )
+        inspection = MediaInspection((MediaStream(0, StreamKind.VIDEO, "h264"),))
         published = PublishedOutput(
             Path("lesson.mp4"),
             Path("output/lesson.subtitled.mkv"),

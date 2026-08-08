@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import re
+from pathlib import Path
 
 from .errors import MuxingCollisionError, MuxingError
 from .models import (
@@ -138,9 +138,7 @@ class MuxingStage:
 
         destination = paths.staged_output_for(plan.inventory.source)
         if destination.exists() or destination.is_symlink():
-            raise MuxingCollisionError(
-                f"Staged output already exists: {destination}"
-            )
+            raise MuxingCollisionError(f"Staged output already exists: {destination}")
 
         self.muxer.mux(plan.inventory, subtitles, destination)
         try:

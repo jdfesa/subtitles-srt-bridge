@@ -1,10 +1,11 @@
 """Portable core for the Subtitles Bridge workflow."""
 
+from .execution import BatchExecutor
 from .models import (
     ArchivedInputs,
     ArtifactState,
-    BatchResult,
     BatchPlan,
+    BatchResult,
     DiscoveryIssue,
     DiscoveryIssueKind,
     DiscoveryResult,
@@ -30,7 +31,6 @@ from .models import (
     VideoResult,
 )
 from .paths import WorkspacePaths
-from .execution import BatchExecutor
 from .workspace_application import WorkspaceApplication
 
 __all__ = [

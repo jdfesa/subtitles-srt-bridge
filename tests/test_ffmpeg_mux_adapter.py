@@ -1,8 +1,8 @@
-from pathlib import Path
-from hashlib import sha256
 import subprocess
 import tempfile
 import unittest
+from hashlib import sha256
+from pathlib import Path
 
 from subtitles_bridge.adapters.ffmpeg_mux import (
     FFmpegMediaMuxer,
@@ -252,9 +252,7 @@ class FFmpegMediaMuxerTests(unittest.TestCase):
         self.assertEqual(sidecar.read_bytes(), sidecar_content)
 
     def test_rejects_sidecar_changed_after_its_hash_was_recorded(self):
-        _, inventory, sidecar, subtitle, destination, working = (
-            self.make_workspace()
-        )
+        _, inventory, sidecar, subtitle, destination, working = self.make_workspace()
         sidecar.write_bytes(b"changed subtitle")
         runner_calls = []
 

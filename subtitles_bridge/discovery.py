@@ -20,7 +20,6 @@ from .models import (
 from .paths import VIDEO_EXTENSIONS, WorkspacePaths
 from .ports import MediaProbe, SubtitleValidator
 
-
 FIXED_SUBTITLE_DIRECTORIES = frozenset({"sub", "subs", "subtitles"})
 
 
@@ -39,12 +38,9 @@ def discover_video_paths(paths: WorkspacePaths) -> tuple[Path, ...]:
 
 def _recognized_subtitle_directory(path: Path) -> bool:
     folded_name = path.name.casefold()
-    return (
-        path.is_dir()
-        and (
-            folded_name in FIXED_SUBTITLE_DIRECTORIES
-            or (folded_name.startswith("sub_") and len(folded_name) > 4)
-        )
+    return path.is_dir() and (
+        folded_name in FIXED_SUBTITLE_DIRECTORIES
+        or (folded_name.startswith("sub_") and len(folded_name) > 4)
     )
 
 
@@ -92,7 +88,9 @@ class WorkspaceDiscovery:
         issues: list[DiscoveryIssue] = []
 
         for sidecar in sidecars:
-            candidates = tuple(video for video in videos if _matches_video(sidecar, video))
+            candidates = tuple(
+                video for video in videos if _matches_video(sidecar, video)
+            )
             if not candidates:
                 issues.append(
                     DiscoveryIssue(

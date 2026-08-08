@@ -1,8 +1,8 @@
-from dataclasses import replace
 import os
-from pathlib import Path
 import tempfile
 import unittest
+from dataclasses import replace
+from pathlib import Path
 
 from subtitles_bridge.adapters.filesystem_archive import (
     TransactionalInputArchiver,
@@ -221,9 +221,7 @@ class ArchivingStageTests(unittest.TestCase):
         self.assertTrue(proof.final_path.is_file())
 
     def test_resumes_generated_sidecar_archival_from_verified_output(self):
-        _, source, inventory, paths, _, proof = self.make_workspace(
-            with_external=False
-        )
+        _, source, inventory, paths, _, proof = self.make_workspace(with_external=False)
         generated_path = paths.staging_directory / "lesson.generated.eng.srt"
         generated_path.parent.mkdir()
         generated_path.write_text(
@@ -287,9 +285,9 @@ class ArchivingStageTests(unittest.TestCase):
             os.replace(original, archived)
 
         with self.assertRaisesRegex(ArchivingPartialError, "remains valid"):
-            ArchivingStage(
-                TransactionalInputArchiver(fail_source_move)
-            ).execute(batch, source, paths, proof)
+            ArchivingStage(TransactionalInputArchiver(fail_source_move)).execute(
+                batch, source, paths, proof
+            )
 
         self.assertTrue(proof.final_path.is_file())
         self.assertTrue(source.is_file())
