@@ -716,6 +716,45 @@ offline completa y repetir el doctor y el smoke test aplicable. Una
 reproducción byte a byte de todo el entorno queda fuera de P1.4 hasta contar
 con matrices y artefactos por plataforma.
 
+## Checks automáticos P1.5
+
+La puerta de calidad local se ejecuta desde la raíz con:
+
+```bash
+python3 tools/check.py
+```
+
+El comando falla ante la primera herramienta ausente o comprobación no exitosa
+y ejecuta, en orden:
+
+1. `ruff check` sobre el código Python mantenido;
+2. `ruff format --check`, sin modificar archivos;
+3. `shfmt -d -i 4 -ci` para `menu.sh` y `setup.sh`;
+4. ShellCheck para ambos wrappers;
+5. `python -m unittest discover -s tests -q`;
+6. los smokes de entry point incluidos en la suite.
+
+Las versiones directas quedan fijadas: Ruff `0.15.22` en
+`requirements-dev.txt`, ShellCheck `0.11.0` y shfmt `3.13.1`. Estas herramientas
+son desarrollo, no runtime: `setup.sh` no las instala y la CLI principal no las
+importa.
+
+En el backlog histórico, `inspect` describe la primera etapa read-only del
+workflow. La opción pública que la ejecuta y termina después de mostrar el plan
+es `--preflight`; P1.5 no agrega un segundo comando sin una diferencia
+funcional. El smoke crea un workspace temporal vacío, ejecuta `--preflight`,
+espera el fallo estable por lote vacío y verifica que no aparezcan `output/`,
+`staging/` o `trash/`. También ejecuta `--help` y exige código `0`. Ninguno de
+los dos casos carga Whisper, invoca FFmpeg/FFprobe o accede a la red.
+
+GitHub Actions se ejecuta en cada `push` y `pull_request` con permisos de solo
+lectura. Un job Linux corre la puerta de calidad completa. La matriz de
+compatibilidad valida macOS y Windows con Python 3.12, y Linux con cada versión
+soportada 3.10, 3.11, 3.12 y 3.13. Las imágenes de runner quedan explícitas en
+el workflow para que un cambio de sistema sea deliberado. Windows ejecuta la
+suite portable completa y omite únicamente las pruebas de los wrappers Bash,
+que por contrato pertenecen a macOS/Linux.
+
 ## Red y privacidad
 
 - Whisper se ejecuta localmente y utiliza CPU/GPU del equipo.

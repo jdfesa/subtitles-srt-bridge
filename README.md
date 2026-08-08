@@ -182,8 +182,31 @@ normal. Un `unexpected success` hace fallar la suite para evitar mantener una
 marca obsoleta.
 
 El inventario de esas reproducciones está en [`tests/README.md`](tests/README.md).
-La suite completa ejecuta 210 casos y mantiene 11 defectos del prototipo
+La suite completa ejecuta 214 casos y mantiene 11 defectos del prototipo
 legado como `expectedFailure`.
+
+## Checks automáticos
+
+Las herramientas de desarrollo no se instalan mediante `setup.sh`. Para
+preparar Ruff dentro del entorno del proyecto:
+
+```bash
+"/ruta/al/repositorio/.venv/bin/python3" -m pip install \
+  -r "/ruta/al/repositorio/requirements-dev.txt"
+```
+
+La puerta local requiere además ShellCheck `0.11.0` y shfmt `3.13.1`
+disponibles en `PATH`. Después ejecuta, sin reescribir archivos, formato y lint
+de Python/Bash, la suite offline y los smokes reales de `--help` y
+`--preflight`:
+
+```bash
+"/ruta/al/repositorio/.venv/bin/python3" "/ruta/al/repositorio/tools/check.py"
+```
+
+GitHub Actions repite la puerta completa en Linux y ejecuta la suite sobre
+CPython 3.10-3.13, macOS, Linux y Windows. No instala Whisper, no descarga
+modelos y no invoca FFmpeg/FFprobe durante esos checks.
 
 ## Requisitos previstos
 

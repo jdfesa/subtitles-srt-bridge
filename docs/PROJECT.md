@@ -261,16 +261,41 @@ ese archivo es una acción manual y consciente de que el texto puede enviarse a
 un tercero. P2.2 deberá reemplazar esta separación temporal por un contrato de
 traducción opcional antes de conectarla al producto.
 
+## Política de checks automáticos P1.5
+
+El repositorio tendrá una única puerta de calidad local, ejecutada por
+`tools/check.py`, que comprueba formato y lint de Python, formato y lint de los
+wrappers Bash, la suite offline completa y smokes reales de la CLI. Las
+herramientas de desarrollo se mantienen separadas de `requirements.txt` y
+nunca se instalan mediante `setup.sh`.
+
+Ruff controla el paquete objetivo, sus entry points, las pruebas y las
+herramientas mantenidas. Los prototipos `process_videos.py`,
+`local_translate_srt.py` y `tools/normalize_video_mp4/` quedan fuera del
+reformateo automático para evitar una reescritura masiva sin valor funcional;
+sus pruebas de caracterización siguen ejecutándose en cada cambio.
+
+ShellCheck y shfmt comprueban `menu.sh` y `setup.sh`. El check solo inspecciona
+el formato: nunca reescribe archivos automáticamente. Si falta una herramienta
+local, falla con el comando de instalación documentado en vez de omitirla.
+
+La CI ejecuta la puerta de calidad y una matriz nativa sobre macOS, Linux y
+Windows. Cubre todas las versiones CPython soportadas sin instalar Whisper ni
+FFmpeg: las pruebas sustituyen dependencias externas y los smokes se limitan a
+`--help` y al límite read-only de inspección expuesto como `--preflight`.
+
 ## Estado técnico observado (2026-08-08)
 
-El flujo objetivo implementa P0.1-P0.9 y P1.1-P1.4. Quedan límites operativos
+El flujo objetivo implementa P0.1-P0.9 y P1.1-P1.4. P1.5 está implementado y
+validado localmente en macOS; su matriz hospedada queda pendiente de publicar
+el workflow. Quedan límites operativos
 explícitos para las siguientes fases:
 
 - el parser SRT de traducción omite o altera bloques comunes;
 - el parser de traducción todavía contiene mensajes con variables no
   interpoladas;
-- existe una red de seguridad offline y un núcleo modular inicial, pero todavía
-  no hay CI;
+- existe una red de seguridad offline y un núcleo modular inicial; la CI ya
+  está declarada y debe confirmar Linux/Windows después de publicarse;
 - el prototipo de traducción legado usa Google y requiere Internet, pero no
   forma parte de la CLI principal;
 - el normalizador MP4 importado es una CLI monolítica independiente y no debe

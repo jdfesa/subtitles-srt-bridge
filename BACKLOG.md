@@ -523,6 +523,43 @@ Hacer que la CLI represente correctamente el resultado de uno o varios videos.
 - Smoke test de `--help` y `inspect` sin modelos ni red.
 - Validación nativa en macOS y luego Linux/Windows.
 
+**Contrato documentado antes de implementar**
+
+- `tools/check.py` será la puerta local única y ejecutará Ruff, shfmt,
+  ShellCheck, la suite offline y los smokes de CLI sin modificar archivos.
+- Ruff `0.15.22` se fijará como dependencia de desarrollo; ShellCheck `0.11.0`
+  y shfmt `3.13.1` se fijarán como herramientas externas. Ninguna formará parte
+  de `setup.sh` ni de las dependencias productivas.
+- Ruff cubrirá el paquete objetivo, entry points, pruebas y herramientas
+  mantenidas. Los prototipos legados quedarán fuera del reformateo pero sus
+  caracterizaciones continuarán ejecutándose.
+- El término histórico `inspect` se validará mediante la opción pública
+  existente `--preflight`; no se agregará un alias sin comportamiento distinto.
+- Los smokes ejecutarán `--help` y un preflight vacío en subprocess, comprobarán
+  sus códigos estables y demostrarán que no crean rutas administradas ni
+  requieren Whisper, FFmpeg, modelos o red.
+- GitHub Actions correrá en `push` y `pull_request` con permisos read-only. La
+  calidad completa usará Linux; la matriz validará Python 3.10-3.13 en Linux y
+  Python 3.12 también en macOS y Windows mediante imágenes explícitas.
+
+**Resultado local; validación hospedada pendiente**
+
+- Ruff `0.15.22`, ShellCheck `0.11.0` y shfmt `3.13.1` forman una puerta única
+  que valida versiones, formato, lint, suite y smokes sin modificar archivos.
+- La línea base aplicó formato determinista al código mantenido y corrigió un
+  binding de excepción sin uso, la asignación ambigua de `CDPATH` y los reads
+  interactivos que sí debían preservar backslashes.
+- Dos smokes de subprocess verifican `--help` y el preflight vacío read-only
+  sin rutas administradas ni backends multimedia.
+- GitHub Actions define calidad en Ubuntu y seis combinaciones nativas:
+  CPython 3.10-3.13 en Linux, 3.12 en macOS y 3.12 en Windows.
+- La ejecución Windows omite solamente las pruebas de `menu.sh` y `setup.sh`;
+  los wrappers Bash continúan validados en macOS/Linux y el núcleo portable
+  ejecuta el resto de la suite nativamente.
+- La puerta completa pasa localmente en macOS con 214 pruebas y 11
+  `expectedFailure` legados. P1.5 se marcará completo después de publicar y
+  confirmar la primera matriz hospedada.
+
 ### [ ] P1.6 Mejorar observabilidad
 
 - Mensajes consistentes y salida apta para automatización.

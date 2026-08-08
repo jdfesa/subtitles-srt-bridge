@@ -332,6 +332,29 @@ sistema operativo y acelerador cuando exista una estrategia de distribución.
 El paquete `subtitles_bridge` no importa el traductor legado. Su dependencia de
 red queda fuera del setup, del doctor y de la CLI principal.
 
+## Extensión P1.5: puerta de calidad y CI
+
+P1.5 automatiza validaciones sin introducir herramientas de desarrollo en el
+grafo productivo:
+
+| Archivo o módulo | Responsabilidad |
+| --- | --- |
+| `requirements-dev.txt` | Fijar Ruff separado de las dependencias runtime. |
+| `ruff.toml` | Definir el alcance mantenido, Python 3.10 y las reglas de formato/lint. |
+| `tools/check.py` | Validar versiones y ejecutar la puerta local completa sin modificar archivos. |
+| `tests/test_cli_smoke.py` | Ejecutar los entry points reales sin Whisper, FFmpeg ni red. |
+| `.github/workflows/checks.yml` | Repetir calidad y compatibilidad nativa en cada cambio. |
+
+El job de calidad recibe Ruff desde pip y descarga releases exactas de shfmt y
+ShellCheck verificando SHA-256 antes de instalarlas. La matriz de compatibilidad
+no instala dependencias productivas: el diseño inyectable permite ejecutar la
+suite con la biblioteca estándar en CPython 3.10-3.13 y en los tres sistemas
+objetivo.
+
+Los prototipos legados permanecen fuera del alcance de Ruff, pero no fuera de
+la suite. Así la fase establece una línea base limpia para el paquete objetivo
+sin mezclarla con la futura migración o eliminación de scripts históricos.
+
 ## Pruebas
 
 Los modelos, rutas, puertos, discovery y planner se prueban con `unittest`,
