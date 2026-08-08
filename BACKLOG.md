@@ -516,7 +516,7 @@ Hacer que la CLI represente correctamente el resultado de uno o varios videos.
 - El doctor real confirmó Python 3.12.11, FFmpeg 8.0.1, FFprobe 8.0.1 y el
   checkpoint local `small`; `pip check` no encontró dependencias rotas.
 
-### [ ] P1.5 Agregar checks automáticos
+### [x] P1.5 Agregar checks automáticos
 
 - Formato y lint de Python y shell.
 - Pruebas en cada cambio mediante CI.
@@ -542,7 +542,7 @@ Hacer que la CLI represente correctamente el resultado de uno o varios videos.
   calidad completa usará Linux; la matriz validará Python 3.10-3.13 en Linux y
   Python 3.12 también en macOS y Windows mediante imágenes explícitas.
 
-**Resultado local; validación hospedada pendiente**
+**Resultado**
 
 - Ruff `0.15.22`, ShellCheck `0.11.0` y shfmt `3.13.1` forman una puerta única
   que valida versiones, formato, lint, suite y smokes sin modificar archivos.
@@ -557,8 +557,13 @@ Hacer que la CLI represente correctamente el resultado de uno o varios videos.
   los wrappers Bash continúan validados en macOS/Linux y el núcleo portable
   ejecuta el resto de la suite nativamente.
 - La puerta completa pasa localmente en macOS con 214 pruebas y 11
-  `expectedFailure` legados. P1.5 se marcará completo después de publicar y
-  confirmar la primera matriz hospedada.
+  `expectedFailure` legados.
+- La primera matriz hospedada detectó una aserción de rutas específica de POSIX
+  en el test del comando de muxing. La prueba se corrigió para comparar las
+  rutas nativas generadas por `pathlib` y conservar el mismo contrato en todas
+  las plataformas.
+- La ejecución hospedada corregida `31284416484` pasó la puerta de calidad y
+  las seis combinaciones de compatibilidad en macOS, Linux y Windows.
 
 ### [ ] P1.6 Mejorar observabilidad
 
@@ -613,5 +618,5 @@ contenedor opcional solo cuando el uso fuera del clon lo justifique.
 7. Implementar cuarentena automática y resumen transaccional (P0.8-P0.9).
    **Completado.**
 8. Ejecutar P1 en incrementos pequeños.
-   **P1.4 completado; siguiente fase: P1.5.**
+   **P1.5 completado; siguiente fase: P1.6.**
 9. Repriorizar P2 solamente con evidencia de uso.

@@ -286,16 +286,16 @@ FFmpeg: las pruebas sustituyen dependencias externas y los smokes se limitan a
 
 ## Estado técnico observado (2026-08-08)
 
-El flujo objetivo implementa P0.1-P0.9 y P1.1-P1.4. P1.5 está implementado y
-validado localmente en macOS; su matriz hospedada queda pendiente de publicar
-el workflow. Quedan límites operativos
-explícitos para las siguientes fases:
+El flujo objetivo implementa P0.1-P0.9 y P1.1-P1.5. La puerta local y la matriz
+hospedada validan el núcleo en CPython 3.10-3.13 sobre Linux y en CPython 3.12
+sobre macOS y Windows. Quedan límites operativos explícitos para las siguientes
+fases:
 
 - el parser SRT de traducción omite o altera bloques comunes;
 - el parser de traducción todavía contiene mensajes con variables no
   interpoladas;
-- existe una red de seguridad offline y un núcleo modular inicial; la CI ya
-  está declarada y debe confirmar Linux/Windows después de publicarse;
+- existe una red de seguridad offline y un núcleo modular inicial; la CI
+  confirma formato, lint, smokes y compatibilidad nativa en cada cambio;
 - el prototipo de traducción legado usa Google y requiere Internet, pero no
   forma parte de la CLI principal;
 - el normalizador MP4 importado es una CLI monolítica independiente y no debe
