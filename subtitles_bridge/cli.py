@@ -39,26 +39,52 @@ def _audio_selection(value: str) -> AudioSelection:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="subtitles-bridge",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
         description=(
-            "Package selectable subtitle tracks into verified MKV outputs "
-            "without transcoding source streams."
+            "Reuse every valid subtitle or generate one only when none exist, then\n"
+            "package selectable, non-default subtitle tracks into a verified MKV.\n"
+            "All source streams are preserved without audio/video transcoding."
         ),
+        epilog="""Safe workflow:
+  1. Inspect without changes:
+       subtitles-bridge /path/to/videos --preflight
+  2. Process an unambiguous plan:
+       subtitles-bridge /path/to/videos
+  3. Resume only a verified output whose archive step is pending:
+       subtitles-bridge /path/to/videos --resume
+  4. Check runtime requirements without selecting a workspace:
+       subtitles-bridge --doctor
+
+Exit codes:
+  0  completed or safely skipped
+  1  failed or empty workspace
+  2  user decision required; no video stages executed
+  3  output published, but input archival remains pending
+
+Safety:
+  Preflight is read-only. Processing never overwrites output/ or trash/,
+  verifies the MKV before publication, and treats trash/ as reversible
+  quarantine.
+""",
     )
     parser.add_argument(
         "directory",
         nargs="?",
         default=".",
-        help="workspace containing non-recursive MP4/MKV inputs (default: cwd)",
+        help=(
+            "folder containing non-recursive MP4/MKV inputs and associated SRT "
+            "files (default: current directory)"
+        ),
     )
     parser.add_argument(
         "--doctor",
         action="store_true",
-        help="check the local runtime without processing a workspace",
+        help="check Python, FFmpeg, FFprobe, and Whisper without a workspace",
     )
     parser.add_argument(
         "--preflight",
         action="store_true",
-        help="inspect and print the plan without executing any stage",
+        help="inspect associations, collisions, and the plan without changes",
     )
     parser.add_argument(
         "--audio",
@@ -66,7 +92,10 @@ def build_parser() -> argparse.ArgumentParser:
         default=[],
         type=_audio_selection,
         metavar="SOURCE=STREAM_INDEX",
-        help="select the audio stream to transcribe for one source (repeatable)",
+        help=(
+            "resolve which audio to transcribe when a subtitle-free source has "
+            "multiple candidates (repeatable)"
+        ),
     )
     parser.add_argument(
         "--whisper-model",
@@ -84,13 +113,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--resume",
         action="store_true",
-        help="re-verify existing outputs and run only pending safe stages",
+        help="re-verify a published output and retry only pending archival",
     )
     parser.add_argument(
         "--output-format",
         choices=tuple(item.value for item in OutputFormat),
         default=OutputFormat.TEXT.value,
-        help="report as human-readable text or streaming JSON Lines (default: text)",
+        help="use human-readable text or automation-safe JSON Lines (default: text)",
     )
     return parser
 

@@ -23,6 +23,10 @@ class CliSmokeTests(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertIn("usage: subtitles-bridge", completed.stdout)
         self.assertIn("--preflight", completed.stdout)
+        self.assertIn("Safe workflow:", completed.stdout)
+        self.assertIn("Exit codes:", completed.stdout)
+        self.assertIn("selectable, non-default subtitle tracks", completed.stdout)
+        self.assertIn("never overwrites output/ or trash/", completed.stdout)
 
     def test_empty_preflight_is_read_only_and_needs_no_media_backend(self):
         with tempfile.TemporaryDirectory() as temp_dir:

@@ -14,25 +14,92 @@ NC='\033[0m' # No Color
 
 show_menu() {
     clear
-    echo "========================================="
-    echo "   🎬  SUBTITLES BRIDGE - MENU        "
-    echo "========================================="
-    echo "1. 🛠️  Instalar / Configurar (Setup)"
-    echo "2. 🚀 Procesar Videos"
-    echo "3. 🧹 Limpiar Entorno (Solución de errores)"
-    echo "4. ℹ️  Cómo usar (Ayuda)"
-    echo "5. 🚪 Salir"
-    echo "========================================="
+    echo "=================================================="
+    echo "  🎬  SUBTITLES BRIDGE"
+    echo "  Subtítulos seleccionables en un MKV verificado"
+    echo "=================================================="
+    echo "1. 🛠️  Preparar / verificar instalación"
+    echo "2. 🔎 Inspeccionar carpeta sin hacer cambios"
+    echo "3. 🚀 Procesar carpeta"
+    echo "4. ↩️  Reanudar archivado pendiente"
+    echo "5. 🩺 Diagnosticar instalación"
+    echo "6. ℹ️  Ayuda y flujo recomendado"
+    echo "7. 🧹 Restablecer entorno local (avanzado)"
+    echo "8. 🚪 Salir"
+    echo "=================================================="
+}
+
+pause_menu() {
+    read -r -p "Presiona Enter para volver al menú..."
+}
+
+require_runtime() {
+    if [ -x "$VENV_PYTHON" ]; then
+        return 0
+    fi
+    echo -e "${RED}❌ No se encontró el entorno virtual.${NC}"
+    echo "Ejecuta primero '1. Preparar / verificar instalación'."
+    return 1
+}
+
+prompt_target_dir() {
+    echo -e "${GREEN}Ruta de la carpeta con videos (Enter = directorio actual):${NC}"
+    echo "Puedes escribirla o arrastrarla desde Finder."
+    # Drag-and-drop paths arrive with shell-escaped spaces; read must unescape them.
+    # shellcheck disable=SC2162
+    IFS= read TARGET_DIR
+    if [ -z "$TARGET_DIR" ]; then
+        TARGET_DIR="$PWD"
+    fi
+}
+
+report_cli_status() {
+    action=$1
+    status=$2
+    case $status in
+        0)
+            case $action in
+                Inspección)
+                    echo -e "${GREEN}✅ Inspección completada: no se modificó ningún archivo.${NC}"
+                    ;;
+                Procesamiento)
+                    echo -e "${GREEN}✅ Procesamiento finalizado correctamente.${NC}"
+                    ;;
+                Reanudación)
+                    echo -e "${GREEN}✅ Reanudación completada correctamente.${NC}"
+                    ;;
+                Diagnóstico)
+                    echo -e "${GREEN}✅ Diagnóstico finalizado. Revisa cualquier advertencia mostrada.${NC}"
+                    ;;
+            esac
+            ;;
+        1)
+            echo -e "${RED}❌ $action falló (código 1).${NC}"
+            echo "Revisa la etapa, ruta o requisito informado arriba."
+            ;;
+        2)
+            echo -e "${YELLOW}⚠️  El lote necesita una decisión (código 2).${NC}"
+            echo "No se ejecutó ningún video. Revisa la inspección y, si corresponde,"
+            echo "usa la CLI con --audio SOURCE=STREAM_INDEX."
+            ;;
+        3)
+            echo -e "${YELLOW}⚠️  Resultado parcial (código 3): el MKV publicado se conserva.${NC}"
+            echo "Corrige el problema de archivado y elige '4. Reanudar archivado pendiente'."
+            ;;
+        *)
+            echo -e "${RED}❌ $action terminó con un código inesperado: $status.${NC}"
+            ;;
+    esac
 }
 
 run_setup() {
     if [ -d "$VENV_DIR" ]; then
-        echo -e "${YELLOW}⚠️  ADVERTENCIA: Ya se detectó un entorno virtual en $VENV_DIR${NC}"
-        echo "¿Deseas reinstalar/actualizar las dependencias? (s/n)"
+        echo -e "${YELLOW}⚠️  Ya existe un entorno virtual en $VENV_DIR${NC}"
+        echo "¿Deseas verificarlo y actualizar sus dependencias? (s/n)"
         read -r answer
         if [[ "$answer" != "s" && "$answer" != "S" ]]; then
             echo "Operación cancelada."
-            read -r -p "Presiona Enter para volver al menú..."
+            pause_menu
             return
         fi
     fi
@@ -42,89 +109,100 @@ run_setup() {
         setup_status=$?
         echo -e "${RED}❌ La instalación no se completó (código $setup_status).${NC}"
     fi
-    read -r -p "Presiona Enter para continuar..."
+    pause_menu
 }
 
-run_process() {
-    if [ ! -x "$VENV_PYTHON" ]; then
-        echo -e "${RED}❌ Error: No se encontró el entorno virtual.${NC}"
-        echo "Por favor, ejecuta la opción '1. Instalar / Configurar' primero."
-        read -r -p "Presiona Enter para volver al menú..."
+run_workspace_action() {
+    action=$1
+    shift
+    if ! require_runtime; then
+        pause_menu
         return
     fi
+    prompt_target_dir
+    echo "$action en: $TARGET_DIR"
+    "$VENV_PYTHON" "$CLI_SCRIPT" "$TARGET_DIR" "$@"
+    status=$?
+    echo ""
+    report_cli_status "$action" "$status"
+    pause_menu
+}
 
-    echo -e "${GREEN}Introduce la ruta del directorio de videos (o presiona Enter para usar el actual):${NC}"
-    # Terminal drag-and-drop may escape spaces with backslashes.
-    # Drag-and-drop paths arrive with shell-escaped spaces; read must unescape them.
-    # shellcheck disable=SC2162
-    IFS= read target_dir
-
-    if [ -z "$target_dir" ]; then
-        target_dir="$PWD"
+run_doctor() {
+    if ! require_runtime; then
+        pause_menu
+        return
     fi
-
-    echo "Iniciando proceso en: $target_dir"
-    if "$VENV_PYTHON" "$CLI_SCRIPT" "$target_dir"; then
-        echo -e "\n${GREEN}✅ Proceso finalizado correctamente.${NC}"
-    else
-        process_status=$?
-        echo -e "\n${RED}❌ Proceso no completado (código $process_status).${NC}"
-    fi
-    read -r -p "Presiona Enter para volver al menú..."
+    "$VENV_PYTHON" "$CLI_SCRIPT" --doctor
+    status=$?
+    echo ""
+    report_cli_status "Diagnóstico" "$status"
+    pause_menu
 }
 
 run_clean() {
-    echo -e "${RED}⚠️  ATENCIÓN ⚠️${NC}"
-    echo "Esta opción eliminará la carpeta '$VENV_DIR'."
-    echo "Úsala si la instalación falló o si quieres empezar de cero."
+    echo -e "${RED}⚠️  ACCIÓN AVANZADA${NC}"
+    echo "Se eliminarán únicamente '$VENV_DIR' y caches Python del repositorio."
+    echo "No se modificarán videos, output/ ni trash/."
     echo "¿Estás seguro de continuar? (s/n)"
     read -r answer
     if [[ "$answer" == "s" || "$answer" == "S" ]]; then
         echo "Eliminando entorno virtual..."
         rm -rf "$VENV_DIR"
-
         echo "Limpiando caches de Python..."
         find "$PROJECT_ROOT" -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null
         find "$PROJECT_ROOT" -name "*.pyc" -delete
-
-        echo -e "${GREEN}✅ Entorno y archivos temporales eliminados.${NC}"
-        echo "Ahora puedes usar la opción 1 para instalarlo nuevamente."
+        echo -e "${GREEN}✅ Entorno local restablecido.${NC}"
+        echo "Ahora puedes usar la opción 1 para prepararlo nuevamente."
     else
         echo "Operación cancelada."
     fi
-    read -r -p "Presiona Enter para volver al menú..."
+    pause_menu
 }
 
 show_help() {
-    echo -e "${YELLOW}ℹ️  GUÍA DE USO${NC}"
+    echo -e "${YELLOW}ℹ️  OBJETIVO Y FLUJO RECOMENDADO${NC}"
     echo "---------------------------------------------------------"
-    echo "1. Instalar: Ejecuta esto la primera vez para bajar las herramientas."
-    echo "2. Procesar: Ejecuta el pipeline seguro sobre la carpeta elegida."
-    echo "   - Reutiliza todos los subtítulos válidos disponibles."
-    echo "   - Genera uno con Whisper solo cuando no existe ninguno."
-    echo "   - Crea y verifica un MKV sin recodificar los streams."
-    echo "   - Mueve los insumos incorporados a trash/ al finalizar."
-    echo "   - La CLI directa ofrece --preflight, --audio y --resume."
-    echo "   - También admite --whisper-model y --whisper-device."
-    echo "   - Usa --doctor para comprobar Python, FFmpeg, FFprobe y Whisper."
-    echo "3. Limpiar: Borra el entorno virtual por si hubo errores."
+    echo "OBJETIVO"
+    echo "  Reunir cada video y todos sus subtítulos válidos en un"
+    echo "  único MKV con pistas seleccionables y no predeterminadas."
     echo ""
-    echo "Simplemente sigue las instrucciones en pantalla."
+    echo "FLUJO NORMAL"
+    echo "  1. Prepara la instalación una vez."
+    echo "  2. Coloca MP4/MKV y sus SRT asociados en una carpeta."
+    echo "  3. Inspecciona la carpeta sin cambios."
+    echo "  4. Procesa cuando el plan esté listo."
+    echo "  5. Revisa el MKV en output/ y la cuarentena trash/."
+    echo ""
+    echo "REGLAS DE SEGURIDAD"
+    echo "  - Reutiliza todos los subtítulos válidos encontrados."
+    echo "  - Usa Whisper solo si no existe ningún subtítulo válido."
+    echo "  - No comprime ni recodifica audio o video."
+    echo "  - Verifica la salida antes de mover insumos."
+    echo "  - trash/ es cuarentena reversible: nunca se vacía ni sobrescribe."
+    echo ""
+    echo "SI ALGO QUEDA PENDIENTE"
+    echo "  - Código 2: revisa preflight; una selección de audio puede requerir"
+    echo "    la CLI directa con --audio SOURCE=STREAM_INDEX."
+    echo "  - Código 3: corrige el archivado y usa la opción Reanudar."
+    echo "  - Doctor comprueba Python, FFmpeg, FFprobe y Whisper sin procesar videos."
     echo "---------------------------------------------------------"
-    read -r -p "Presiona Enter para volver al menú..."
+    pause_menu
 }
 
-# Main Loop
 while true; do
     show_menu
-    read -r -p "Selecciona una opción (1-5): " choice
+    read -r -p "Selecciona una opción (1-8): " choice
     case $choice in
         1) run_setup ;;
-        2) run_process ;;
-        3) run_clean ;;
-        4) show_help ;;
-        5)
-            echo "Adiós! 👋"
+        2) run_workspace_action "Inspección" --preflight ;;
+        3) run_workspace_action "Procesamiento" ;;
+        4) run_workspace_action "Reanudación" --resume ;;
+        5) run_doctor ;;
+        6) show_help ;;
+        7) run_clean ;;
+        8)
+            echo "¡Hasta luego! 👋"
             exit 0
             ;;
         *)
