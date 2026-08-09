@@ -89,6 +89,31 @@ P1.5 agrega una puerta local reproducible y GitHub Actions sobre CPython
 progreso por etapa, tiempos monotónicos, ETA basada en muestras reales y
 diagnóstico estructurado de fallos y resultados parciales.
 
+P1.7 está implementado localmente y pendiente de la puerta completa: el menú expone preflight, proceso,
+reanudación y doctor como acciones separadas, explica los códigos de salida y
+mantiene el restablecimiento del entorno como una opción avanzada que no toca
+videos ni las carpetas administradas.
+
+## Menú interactivo
+
+Desde cualquier directorio puede abrirse:
+
+```bash
+/ruta/al/repositorio/menu.sh
+```
+
+El camino normal es:
+
+1. **Preparar / verificar instalación** la primera vez.
+2. **Inspeccionar carpeta sin hacer cambios** para revisar el plan.
+3. **Procesar carpeta** cuando no existan decisiones pendientes.
+4. **Reanudar archivado pendiente** solamente ante un resultado parcial.
+
+La ruta puede escribirse o arrastrarse desde Finder; Enter utiliza el directorio
+actual. El menú también ofrece doctor, ayuda y un restablecimiento avanzado de
+`.venv` y caches. Esa última opción exige confirmación y nunca elimina videos,
+`output/` o `trash/`.
+
 ## Ejecución
 
 Desde cualquier directorio:
@@ -101,6 +126,13 @@ Desde la raíz del repositorio también puede utilizarse:
 
 ```bash
 python3 -m subtitles_bridge /ruta/a/videos
+```
+
+La ayuda completa muestra ejemplos, seguridad y códigos de salida sin cargar
+dependencias multimedia:
+
+```bash
+python3 /ruta/al/repositorio/subtitles_bridge_cli.py --help
 ```
 
 La ruta es opcional y usa el directorio actual por defecto. La CLI muestra el
