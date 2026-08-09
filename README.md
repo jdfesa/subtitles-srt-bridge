@@ -64,7 +64,7 @@ videos/
 
 ## Estado del proyecto
 
-Las fases P0.1-P0.9 y P1.1-P1.6 están completas. La CLI Python ya conecta
+Las fases P0.1-P0.9 y P1.1-P1.7 están completas. La CLI Python ya conecta
 discovery, planner, transcripción fallback, remux, verificación, publicación,
 cuarentena, resumen y códigos de salida en un único flujo. `menu.sh` llama esa
 misma CLI y puede abrirse desde cualquier directorio sin confundir la raíz del
@@ -89,7 +89,7 @@ P1.5 agrega una puerta local reproducible y GitHub Actions sobre CPython
 progreso por etapa, tiempos monotónicos, ETA basada en muestras reales y
 diagnóstico estructurado de fallos y resultados parciales.
 
-P1.7 está implementado localmente y pendiente de la puerta completa: el menú expone preflight, proceso,
+P1.7 cierra la experiencia interactiva: el menú expone preflight, proceso,
 reanudación y doctor como acciones separadas, explica los códigos de salida y
 mantiene el restablecimiento del entorno como una opción avanzada que no toca
 videos ni las carpetas administradas.

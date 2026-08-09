@@ -613,7 +613,7 @@ Hacer que la CLI represente correctamente el resultado de uno o varios videos.
   tiempos, fallos y recuperación parcial. La suite completa ejecuta 223 casos
   con 11 `expectedFailure` legados y la puerta local completa pasa.
 
-### [ ] P1.7 Cerrar la experiencia interactiva y la ayuda
+### [x] P1.7 Cerrar la experiencia interactiva y la ayuda
 
 La implementación principal ya es segura, pero el wrapper interactivo solo
 expone setup, ejecución directa y limpieza. Preflight, doctor y reanudación
@@ -657,9 +657,9 @@ no explica códigos de salida ni el flujo recomendado.
   estados pendientes/parciales y contenido esencial de ayuda. La suite completa
   ejecuta 226 casos con 11 `expectedFailure` legados; Ruff, formato Python,
   sintaxis Bash y `git diff --check` pasan localmente.
-- P1.7 no se marca completa todavía: faltan shfmt `3.13.1` y ShellCheck `0.11.0`
-  en el entorno local para ejecutar `tools/check.py`, y la matriz hospedada aún
-  no validó estos cambios.
+- La ejecución hospedada `31325938882` validó la puerta completa, incluidas las
+  versiones fijadas de shfmt y ShellCheck, y todas las combinaciones nativas de
+  macOS, Linux y Windows.
 
 ## P2 - Evaluar solo con alcance confirmado
 
@@ -742,5 +742,5 @@ contenedor opcional solo cuando el uso fuera del clon lo justifique.
 7. Implementar cuarentena automática y resumen transaccional (P0.8-P0.9).
    **Completado.**
 8. Ejecutar P1 en incrementos pequeños.
-   **P1.7 implementado localmente; pendiente de la puerta completa y CI.**
+   **P1.7 completado; P1 cerrado.**
 9. Repriorizar P2 solamente con evidencia de uso.

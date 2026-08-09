@@ -400,12 +400,10 @@ agregar pistas externas de audio permanecen fuera del producto.
 
 ## Estado técnico observado (2026-08-09)
 
-El flujo objetivo publicado implementa P0.1-P0.9 y P1.1-P1.6. P1.7 tiene una
-implementación local con 226 pruebas verdes, Ruff y sintaxis Bash validados,
-pero espera shfmt, ShellCheck y la matriz hospedada antes de cerrarse. La última
-matriz publicada validó el núcleo en CPython 3.10-3.13 sobre Linux y en CPython
-3.12 sobre macOS y Windows. Quedan límites operativos explícitos para las
-siguientes fases:
+El flujo objetivo publicado implementa P0.1-P0.9 y P1.1-P1.7. La ejecución
+hospedada `31325938882` validó la puerta completa y el núcleo en CPython
+3.10-3.13 sobre Linux y en CPython 3.12 sobre macOS y Windows. Quedan límites
+operativos explícitos para las siguientes fases:
 
 - el parser SRT de traducción omite o altera bloques comunes;
 - el parser de traducción todavía contiene mensajes con variables no
@@ -418,8 +416,7 @@ siguientes fases:
   conectarse sin pruebas de caracterización;
 - P2.1 conserva un contrato candidato documentado, pero permanece pendiente y
   no priorizado porque el caso real problemático ya utiliza MP4.
-- P1.7 tiene menú y ayuda implementados localmente y queda pendiente de la
-  puerta completa antes de evaluar extensiones opcionales.
+- P1.7 cerró menú y ayuda antes de evaluar extensiones opcionales.
 
 El orden de implementación actualizado está en [`../BACKLOG.md`](../BACKLOG.md).
 
