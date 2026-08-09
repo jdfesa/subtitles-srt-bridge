@@ -1,3 +1,4 @@
+import json
 import os
 import subprocess
 import sys
@@ -11,6 +12,7 @@ from subtitles_bridge.bootstrap import (
     build_default_workspace_application,
 )
 from subtitles_bridge.cli import main
+from subtitles_bridge.observability import OutputFormat
 from subtitles_bridge.workspace_application import AudioSelection, WorkspaceApplication
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -29,9 +31,17 @@ class RecordingApplication:
         audio_selections=(),
         resume=False,
         write=print,
+        output_format=None,
     ):
         self.calls.append(
-            (directory, preflight_only, tuple(audio_selections), resume, write)
+            (
+                directory,
+                preflight_only,
+                tuple(audio_selections),
+                resume,
+                write,
+                output_format,
+            )
         )
         write(f"ran {directory}")
         return self.exit_code
@@ -42,8 +52,8 @@ class RecordingDoctor:
         self.exit_code = exit_code
         self.calls = []
 
-    def run(self, *, write=print):
-        self.calls.append(write)
+    def run(self, *, write=print, output_format=None):
+        self.calls.append((write, output_format))
         write("doctor ran")
         return self.exit_code
 
@@ -70,6 +80,7 @@ class CliTests(unittest.TestCase):
             ["/media/input", "."],
         )
         self.assertEqual(written, ["ran /media/input", "ran ."])
+        self.assertTrue(all(call[5] is OutputFormat.TEXT for call in application.calls))
 
     def test_reports_application_construction_failure(self):
         def fail(_config):
@@ -153,6 +164,34 @@ class CliTests(unittest.TestCase):
                 True,
             ),
         )
+
+    def test_passes_jsonl_mode_and_formats_construction_failure(self):
+        application = RecordingApplication()
+
+        exit_code = main(
+            ["--output-format", "jsonl"],
+            application_factory=lambda _config: application,
+            write=lambda _: None,
+        )
+
+        self.assertEqual(exit_code, 0)
+        self.assertIs(application.calls[0][5], OutputFormat.JSONL)
+
+        written = []
+
+        def fail(_config):
+            raise RuntimeError("cannot compose")
+
+        exit_code = main(
+            ["--output-format", "jsonl"],
+            application_factory=fail,
+            write=written.append,
+        )
+
+        record = json.loads(written[0])
+        self.assertEqual(exit_code, 1)
+        self.assertEqual(record["event"], "fatal")
+        self.assertEqual(record["error"]["type"], "RuntimeError")
 
     def test_default_composition_is_lazy_and_uses_application_boundary(self):
         application = build_default_workspace_application(WhisperConfig(device="cpu"))

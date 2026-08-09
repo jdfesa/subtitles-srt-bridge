@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+import time
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Protocol
 
@@ -11,6 +12,7 @@ from .models import (
     ArchivedInputs,
     BatchPlan,
     BatchResult,
+    FailureDetail,
     PipelineStage,
     PublishedOutput,
     ResultStatus,
@@ -21,6 +23,7 @@ from .models import (
     VideoPlan,
     VideoResult,
 )
+from .observability import StageEventKind, StageExecutionEvent
 from .paths import WorkspacePaths
 
 EXECUTION_STAGES = (
@@ -30,6 +33,8 @@ EXECUTION_STAGES = (
     PipelineStage.PUBLISH,
     PipelineStage.ARCHIVE,
 )
+Clock = Callable[[], float]
+ExecutionObserver = Callable[[StageExecutionEvent], None]
 
 
 class TranscriptionApplication(Protocol):
@@ -91,12 +96,15 @@ class BatchExecutor:
         verification: VerificationApplication,
         publishing: PublishingApplication,
         archiving: ArchivingApplication,
+        *,
+        clock: Clock = time.monotonic,
     ) -> None:
         self.transcription = transcription
         self.muxing = muxing
         self.verification = verification
         self.publishing = publishing
         self.archiving = archiving
+        self.clock = clock
 
     def execute(
         self,
@@ -104,6 +112,7 @@ class BatchExecutor:
         paths: WorkspacePaths,
         *,
         published_outputs: Sequence[PublishedOutput] = (),
+        observer: ExecutionObserver | None = None,
     ) -> BatchResult:
         published_by_source = self._published_map(
             batch_plan,
@@ -130,6 +139,7 @@ class BatchExecutor:
                 plan,
                 paths,
                 published_by_source.get(self._source_key(plan.inventory.source)),
+                observer,
             )
             for plan in batch_plan.videos
         )
@@ -141,6 +151,7 @@ class BatchExecutor:
         plan: VideoPlan,
         paths: WorkspacePaths,
         resumed_output: PublishedOutput | None,
+        observer: ExecutionObserver | None,
     ) -> VideoResult:
         generated: SubtitleArtifact | None = None
         verified: VerifiedOutput | None = None
@@ -159,6 +170,7 @@ class BatchExecutor:
                     stage_results,
                     ExecutionError(f"Plan has no {stage.value} decision"),
                     published,
+                    paths,
                 )
             if decision.action is StageAction.SKIP:
                 stage_results.append(
@@ -176,6 +188,18 @@ class BatchExecutor:
                     stages=tuple(stage_results),
                 )
 
+            target_path = self._stage_target(plan, stage, paths)
+            started_at = self.clock()
+            if observer is not None:
+                observer(
+                    StageExecutionEvent(
+                        StageEventKind.STARTED,
+                        plan.inventory.source,
+                        stage,
+                        target_path,
+                        f"Running {stage.value} for {plan.inventory.source}",
+                    )
+                )
             try:
                 if stage is PipelineStage.TRANSCRIBE:
                     generated = self.transcription.execute(
@@ -224,17 +248,52 @@ class BatchExecutor:
                         f"Archived {len(archived.archived_paths)} input(s): "
                         f"{archived.destination}"
                     )
-                stage_results.append(
-                    StageResult(stage, ResultStatus.COMPLETED, message)
+                duration = self._elapsed_since(started_at)
+                stage_result = StageResult(
+                    stage,
+                    ResultStatus.COMPLETED,
+                    message,
+                    duration,
                 )
             except Exception as exc:
-                return self._failed_result(
+                duration = self._elapsed_since(started_at)
+                result = self._failed_result(
                     plan,
                     stage,
                     position,
                     stage_results,
                     exc,
                     published,
+                    paths,
+                    duration,
+                )
+                if observer is not None:
+                    failed_stage = result.stages[len(stage_results)]
+                    observer(
+                        StageExecutionEvent(
+                            StageEventKind.FINISHED,
+                            plan.inventory.source,
+                            stage,
+                            target_path,
+                            failed_stage.message,
+                            ResultStatus.FAILED,
+                            duration,
+                            failed_stage.failure,
+                        )
+                    )
+                return result
+            stage_results.append(stage_result)
+            if observer is not None:
+                observer(
+                    StageExecutionEvent(
+                        StageEventKind.FINISHED,
+                        plan.inventory.source,
+                        stage,
+                        target_path,
+                        message,
+                        ResultStatus.COMPLETED,
+                        duration,
+                    )
                 )
 
         ran_stage = any(
@@ -302,15 +361,27 @@ class BatchExecutor:
         completed_stages: list[StageResult],
         error: Exception,
         published: PublishedOutput | None,
+        paths: WorkspacePaths,
+        duration_seconds: float | None = None,
     ) -> VideoResult:
         error_text = str(error).strip() or repr(error)
         detail = f"{type(error).__name__}: {error_text}"
+        failure = FailureDetail(
+            type(error).__name__,
+            error_text,
+            BatchExecutor._stage_target(plan, stage, paths),
+            plan.transcription_audio_index
+            if stage is PipelineStage.TRANSCRIBE
+            else None,
+        )
         stages = [
             *completed_stages,
             StageResult(
                 stage,
                 ResultStatus.FAILED,
                 f"{plan.inventory.source}: {detail}",
+                duration_seconds,
+                failure,
             ),
         ]
         stages.extend(
@@ -337,8 +408,26 @@ class BatchExecutor:
             status,
             f"{stage.value} failed for {plan.inventory.source}: {detail}",
             output_path,
+            plan.trash_path if is_partial else None,
             stages=tuple(stages),
         )
+
+    def _elapsed_since(self, started_at: float) -> float:
+        return max(0.0, self.clock() - started_at)
+
+    @staticmethod
+    def _stage_target(
+        plan: VideoPlan,
+        stage: PipelineStage,
+        paths: WorkspacePaths,
+    ) -> Path:
+        if stage is PipelineStage.TRANSCRIBE:
+            return plan.inventory.source
+        if stage in (PipelineStage.MUX, PipelineStage.VERIFY):
+            return paths.staged_output_for(plan.inventory.source)
+        if stage is PipelineStage.PUBLISH:
+            return plan.output_path
+        return plan.trash_path
 
     @classmethod
     def _published_map(

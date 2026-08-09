@@ -113,12 +113,26 @@ def format_video_result(result: VideoResult) -> str:
         lines.append(f"Output: {result.output_path}")
     if result.trash_path is not None:
         lines.append(f"Trash: {result.trash_path}")
+    if result.status is ResultStatus.PARTIAL:
+        lines.extend(("Pending stage: archive", "Recovery: rerun with --resume"))
     lines.append("Stages:")
     if result.stages:
-        lines.extend(
-            f"  [{stage.status.value}] {stage.stage.value}: {stage.message}"
-            for stage in result.stages
-        )
+        for stage in result.stages:
+            duration = (
+                ""
+                if stage.duration_seconds is None
+                else f" ({stage.duration_seconds:.3f}s)"
+            )
+            lines.append(
+                f"  [{stage.status.value}] {stage.stage.value}{duration}: "
+                f"{stage.message}"
+            )
+            if stage.failure is not None:
+                lines.append(f"    Error type: {stage.failure.error_type}")
+                if stage.failure.target_path is not None:
+                    lines.append(f"    Target: {stage.failure.target_path}")
+                if stage.failure.stream_index is not None:
+                    lines.append(f"    Stream: #{stage.failure.stream_index}")
     else:
         lines.append("  - none")
     return "\n".join(lines)

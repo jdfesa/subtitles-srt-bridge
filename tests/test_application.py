@@ -19,13 +19,13 @@ class ResultExecutor:
         self.result = result
         self.calls = []
 
-    def execute(self, batch_plan, paths, *, published_outputs=()):
-        self.calls.append((batch_plan, paths, tuple(published_outputs)))
+    def execute(self, batch_plan, paths, *, published_outputs=(), observer=None):
+        self.calls.append((batch_plan, paths, tuple(published_outputs), observer))
         return self.result
 
 
 class FailingExecutor:
-    def execute(self, batch_plan, paths, *, published_outputs=()):
+    def execute(self, batch_plan, paths, *, published_outputs=(), observer=None):
         raise RuntimeError("fatal executor failure")
 
 

@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
+from .observability import JsonLinesReporter, OutputFormat
+
 CommandLocator = Callable[[str], str | None]
 CommandRunner = Callable[..., subprocess.CompletedProcess[str]]
 ModelChecker = Callable[[], Path]
@@ -219,11 +221,25 @@ class DoctorApplication:
     def __init__(self, doctor: RuntimeDoctor) -> None:
         self.doctor = doctor
 
-    def run(self, *, write: Writer = print) -> int:
+    def run(
+        self,
+        *,
+        write: Writer = print,
+        output_format: OutputFormat = OutputFormat.TEXT,
+    ) -> int:
+        reporter = (
+            JsonLinesReporter(write) if output_format is OutputFormat.JSONL else None
+        )
         try:
             report = self.doctor.inspect()
         except Exception as exc:
-            write(format_diagnostic_fatal(exc))
+            if reporter is None:
+                write(format_diagnostic_fatal(exc))
+            else:
+                reporter.fatal("doctor", exc)
             return 1
-        write(format_diagnostic_report(report))
+        if reporter is None:
+            write(format_diagnostic_report(report))
+        else:
+            reporter.doctor_result(report)
         return report.exit_code

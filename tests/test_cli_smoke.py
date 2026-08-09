@@ -1,3 +1,4 @@
+import json
 import subprocess
 import sys
 import tempfile
@@ -42,4 +43,38 @@ class CliSmokeTests(unittest.TestCase):
         self.assertIn("Batch: 0 video(s)", completed.stdout)
         self.assertIn("Status: empty", completed.stdout)
         self.assertIn("Preflight result: failed", completed.stdout)
+        self.assertTrue(all(not path.exists() for path in managed_paths))
+
+    def test_empty_preflight_jsonl_has_no_mixed_stdout(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace = Path(temp_dir)
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(CLI),
+                    str(workspace),
+                    "--preflight",
+                    "--output-format",
+                    "jsonl",
+                ],
+                cwd=PROJECT_ROOT,
+                text=True,
+                capture_output=True,
+                timeout=10,
+                check=False,
+            )
+            managed_paths = [
+                workspace / name for name in ("output", "staging", "trash")
+            ]
+
+        records = [json.loads(line) for line in completed.stdout.splitlines()]
+        self.assertEqual(completed.returncode, 1, completed.stderr)
+        self.assertEqual(
+            [record["event"] for record in records],
+            [
+                "preflight",
+                "preflight-result",
+            ],
+        )
+        self.assertEqual(records[-1]["exit_code"], 1)
         self.assertTrue(all(not path.exists() for path in managed_paths))

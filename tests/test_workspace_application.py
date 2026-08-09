@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -20,6 +21,7 @@ from subtitles_bridge.models import (
     VideoPlan,
     VideoResult,
 )
+from subtitles_bridge.observability import OutputFormat
 from subtitles_bridge.workspace_application import AudioSelection, WorkspaceApplication
 
 EXECUTION_STAGES = (
@@ -56,8 +58,8 @@ class FakeExecutor:
         self.result = result
         self.calls = []
 
-    def execute(self, batch_plan, paths, *, published_outputs=()):
-        self.calls.append((batch_plan, paths, tuple(published_outputs)))
+    def execute(self, batch_plan, paths, *, published_outputs=(), observer=None):
+        self.calls.append((batch_plan, paths, tuple(published_outputs), observer))
         return self.result
 
 
@@ -161,6 +163,54 @@ class WorkspaceApplicationTests(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertEqual(executor.calls, [])
         self.assertEqual(written[-1], "Preflight result: ready\nExit code: 0")
+
+    def test_jsonl_preflight_contains_only_ordered_json_records(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            source = root / "lesson.mp4"
+            source.write_bytes(b"video")
+            inventory = VideoInventory(source.resolve())
+            decisions = tuple(
+                PlanDecision(stage, StageAction.SKIP, "Already complete")
+                for stage in EXECUTION_STAGES
+            )
+            plan = BatchPlan(
+                (
+                    VideoPlan(
+                        inventory,
+                        root / "output" / "lesson.subtitled.mkv",
+                        root / "trash" / "lesson",
+                        decisions,
+                    ),
+                )
+            )
+            executor = FakeExecutor(BatchResult(()))
+            application = WorkspaceApplication(
+                FakeDiscovery(DiscoveryResult((inventory,))),
+                FakePlanner(plan),
+                executor,
+            )
+            written = []
+
+            exit_code = application.run(
+                root,
+                preflight_only=True,
+                write=written.append,
+                output_format=OutputFormat.JSONL,
+            )
+
+        records = [json.loads(line) for line in written]
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(
+            [record["event"] for record in records],
+            [
+                "preflight",
+                "preflight-result",
+            ],
+        )
+        self.assertEqual([record["sequence"] for record in records], [1, 2])
+        self.assertEqual(records[-1]["exit_code"], 0)
+        self.assertEqual(executor.calls, [])
 
     def test_preflight_only_reports_needs_input_and_empty_failure(self):
         with tempfile.TemporaryDirectory() as temp_dir:

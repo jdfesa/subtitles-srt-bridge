@@ -427,16 +427,40 @@ class PlanningChoice:
 
 
 @dataclass(frozen=True, slots=True)
+class FailureDetail:
+    error_type: str
+    message: str
+    target_path: Path | None = None
+    stream_index: int | None = None
+
+    def __post_init__(self) -> None:
+        if not self.error_type.strip():
+            raise ValueError("Failure details require an error type")
+        if not self.message.strip():
+            raise ValueError("Failure details require a message")
+        if self.stream_index is not None and self.stream_index < 0:
+            raise ValueError("Failure stream index cannot be negative")
+
+
+@dataclass(frozen=True, slots=True)
 class StageResult:
     stage: PipelineStage
     status: ResultStatus
     message: str
+    duration_seconds: float | None = None
+    failure: FailureDetail | None = None
 
     def __post_init__(self) -> None:
         if self.status is ResultStatus.PARTIAL:
             raise ValueError("A single stage cannot have partial status")
         if not self.message.strip():
             raise ValueError("Stage results require a message")
+        if self.duration_seconds is not None and (
+            not math.isfinite(self.duration_seconds) or self.duration_seconds < 0
+        ):
+            raise ValueError("Stage duration must be finite and non-negative")
+        if self.failure is not None and self.status is not ResultStatus.FAILED:
+            raise ValueError("Only a failed stage can carry failure details")
 
 
 @dataclass(frozen=True, slots=True)

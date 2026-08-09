@@ -49,13 +49,15 @@ class FakePipeline:
         self.failures = {}
         self.stages = {stage: FakeStage(self, stage) for stage in EXECUTION_STAGES}
 
-    def executor(self):
+    def executor(self, *, clock=None):
+        options = {} if clock is None else {"clock": clock}
         return BatchExecutor(
             self.stages[PipelineStage.TRANSCRIBE],
             self.stages[PipelineStage.MUX],
             self.stages[PipelineStage.VERIFY],
             self.stages[PipelineStage.PUBLISH],
             self.stages[PipelineStage.ARCHIVE],
+            **options,
         )
 
     def execute(
@@ -239,6 +241,7 @@ class BatchExecutorTests(unittest.TestCase):
         video = result.videos[0]
         self.assertEqual(video.status, ResultStatus.PARTIAL)
         self.assertEqual(video.output_path, batch.videos[0].output_path)
+        self.assertEqual(video.trash_path, batch.videos[0].trash_path)
         self.assertIn(str(inventory.source), video.message)
         self.assertEqual(result.status, ResultStatus.PARTIAL)
         self.assertEqual(result.exit_code, 3)
@@ -333,6 +336,36 @@ class BatchExecutorTests(unittest.TestCase):
         self.assertEqual(video.status, ResultStatus.FAILED)
         self.assertEqual(video.stages[0].status, ResultStatus.FAILED)
         self.assertIn("returned no SubtitleArtifact", video.message)
+
+    def test_records_timing_target_stream_and_live_failure_events(self):
+        _, paths, (inventory,), discovery = self.make_workspace()
+        batch = BatchPlanner().plan(discovery, paths)
+        pipeline = FakePipeline()
+        pipeline.failures[(inventory.source, PipelineStage.TRANSCRIBE)] = RuntimeError(
+            "recognizer unavailable"
+        )
+        times = iter((10.0, 12.5))
+        events = []
+
+        result = pipeline.executor(clock=lambda: next(times)).execute(
+            batch,
+            paths,
+            observer=events.append,
+        )
+
+        failed = result.videos[0].stages[0]
+        self.assertEqual(failed.duration_seconds, 2.5)
+        self.assertEqual(failed.failure.error_type, "RuntimeError")
+        self.assertEqual(failed.failure.target_path, inventory.source)
+        self.assertEqual(failed.failure.stream_index, 1)
+        self.assertEqual(
+            [event.kind.value for event in events],
+            [
+                "stage-started",
+                "stage-finished",
+            ],
+        )
+        self.assertEqual(events[-1].status, ResultStatus.FAILED)
 
     def test_empty_batches_distinguish_failure_from_discovery_attention(self):
         root, paths, _, _ = self.make_workspace(())

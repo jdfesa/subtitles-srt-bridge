@@ -14,6 +14,7 @@ from .application import (
 )
 from .errors import PlanningError
 from .models import BatchPlan, DiscoveryResult, PlanningChoice, PublishedOutput
+from .observability import JsonLinesReporter, OutputFormat
 from .paths import WorkspacePaths
 from .summary import format_batch_plan
 
@@ -74,7 +75,11 @@ class WorkspaceApplication:
         audio_selections: Sequence[AudioSelection] = (),
         resume: bool = False,
         write: Writer = print,
+        output_format: OutputFormat = OutputFormat.TEXT,
     ) -> int:
+        reporter = (
+            JsonLinesReporter(write) if output_format is OutputFormat.JSONL else None
+        )
         try:
             requested_directory = Path(directory).expanduser()
             paths = WorkspacePaths.from_directory(requested_directory)
@@ -88,10 +93,16 @@ class WorkspaceApplication:
                 choices = self._merge_resume_choices(choices, published_outputs)
             batch_plan = self.planner.plan(discovery, paths, choices)
         except Exception as exc:
-            write(format_fatal_result(exc))
+            if reporter is None:
+                write(format_fatal_result(exc))
+            else:
+                reporter.fatal("batch", exc)
             return 1
 
-        write("Preflight\n" + format_batch_plan(batch_plan))
+        if reporter is None:
+            write("Preflight\n" + format_batch_plan(batch_plan))
+        else:
+            reporter.preflight(batch_plan)
         if preflight_only:
             exit_code = self._preflight_exit_code(batch_plan)
             status = (
@@ -101,7 +112,10 @@ class WorkspaceApplication:
                 if exit_code == 2
                 else "failed"
             )
-            write(f"Preflight result: {status}\nExit code: {exit_code}")
+            if reporter is None:
+                write(f"Preflight result: {status}\nExit code: {exit_code}")
+            else:
+                reporter.preflight_result(status, exit_code)
             return exit_code
         return run_batch_application(
             self.executor,
@@ -109,6 +123,8 @@ class WorkspaceApplication:
             paths,
             published_outputs=published_outputs,
             write=write,
+            output_format=output_format,
+            reporter=reporter,
         )
 
     @staticmethod

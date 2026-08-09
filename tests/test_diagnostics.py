@@ -1,3 +1,4 @@
+import json
 import subprocess
 import unittest
 from pathlib import Path
@@ -7,6 +8,7 @@ from subtitles_bridge.diagnostics import (
     DoctorApplication,
     RuntimeDoctor,
 )
+from subtitles_bridge.observability import OutputFormat
 
 
 class RuntimeDoctorTests(unittest.TestCase):
@@ -153,6 +155,21 @@ class RuntimeDoctorTests(unittest.TestCase):
         self.assertEqual(len(written), 1)
         self.assertTrue(written[0].startswith("Runtime doctor\n[ok] python:"))
         self.assertTrue(written[0].endswith("Doctor result: ready\nExit code: 0"))
+
+    def test_application_can_emit_one_jsonl_doctor_result(self):
+        written = []
+
+        exit_code = DoctorApplication(self.make_doctor()).run(
+            write=written.append,
+            output_format=OutputFormat.JSONL,
+        )
+
+        record = json.loads(written[0])
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(len(written), 1)
+        self.assertEqual(record["event"], "doctor-result")
+        self.assertEqual(record["schema_version"], 1)
+        self.assertEqual(record["checks"][0]["name"], "python")
 
 
 if __name__ == "__main__":

@@ -12,6 +12,7 @@ from .bootstrap import (
     build_default_workspace_application,
 )
 from .diagnostics import DoctorApplication, format_diagnostic_fatal
+from .observability import JsonLinesReporter, OutputFormat
 from .workspace_application import AudioSelection, WorkspaceApplication, Writer
 
 ApplicationFactory = Callable[[WhisperConfig], WorkspaceApplication]
@@ -85,6 +86,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="re-verify existing outputs and run only pending safe stages",
     )
+    parser.add_argument(
+        "--output-format",
+        choices=tuple(item.value for item in OutputFormat),
+        default=OutputFormat.TEXT.value,
+        help="report as human-readable text or streaming JSON Lines (default: text)",
+    )
     return parser
 
 
@@ -96,6 +103,8 @@ def main(
     write: Writer = print,
 ) -> int:
     arguments = build_parser().parse_args(argv)
+    output_format = OutputFormat(arguments.output_format)
+    reporter = JsonLinesReporter(write) if output_format is OutputFormat.JSONL else None
     try:
         config = WhisperConfig(
             model=arguments.whisper_model,
@@ -116,18 +125,22 @@ def main(
         else:
             application = application_factory(config)
     except Exception as exc:
-        write(
-            format_diagnostic_fatal(exc)
-            if arguments.doctor
-            else format_fatal_result(exc)
-        )
+        if reporter is None:
+            write(
+                format_diagnostic_fatal(exc)
+                if arguments.doctor
+                else format_fatal_result(exc)
+            )
+        else:
+            reporter.fatal("doctor" if arguments.doctor else "batch", exc)
         return 1
     if arguments.doctor:
-        return doctor.run(write=write)
+        return doctor.run(write=write, output_format=output_format)
     return application.run(
         arguments.directory,
         preflight_only=arguments.preflight,
         audio_selections=arguments.audio,
         resume=arguments.resume,
         write=write,
+        output_format=output_format,
     )

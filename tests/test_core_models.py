@@ -9,6 +9,7 @@ from subtitles_bridge.models import (
     DiscoveryIssue,
     DiscoveryIssueKind,
     DiscoveryResult,
+    FailureDetail,
     MediaInspection,
     MediaStream,
     PipelineStage,
@@ -301,6 +302,33 @@ class VideoResultTests(unittest.TestCase):
             StageResult(PipelineStage.ARCHIVE, ResultStatus.PARTIAL, "Partial")
         with self.assertRaisesRegex(ValueError, "requires a published"):
             VideoResult(Path("lesson.mp4"), ResultStatus.PARTIAL, "Partial")
+
+    def test_stage_failure_context_and_duration_are_validated(self):
+        failure = FailureDetail(
+            "RuntimeError",
+            "backend failed",
+            Path("staging/lesson.mkv"),
+            2,
+        )
+        stage = StageResult(
+            PipelineStage.MUX,
+            ResultStatus.FAILED,
+            "Mux failed",
+            1.5,
+            failure,
+        )
+
+        self.assertEqual(stage.failure.stream_index, 2)
+        self.assertEqual(stage.duration_seconds, 1.5)
+        with self.assertRaisesRegex(ValueError, "finite and non-negative"):
+            StageResult(PipelineStage.MUX, ResultStatus.FAILED, "Mux failed", -1)
+        with self.assertRaisesRegex(ValueError, "Only a failed"):
+            StageResult(
+                PipelineStage.MUX,
+                ResultStatus.COMPLETED,
+                "Mux complete",
+                failure=failure,
+            )
 
     def test_batch_result_uses_failure_partial_and_input_precedence(self):
         failed = VideoResult(
