@@ -805,6 +805,104 @@ el workflow para que un cambio de sistema sea deliberado. Windows ejecuta la
 suite portable completa y omite únicamente las pruebas de los wrappers Bash,
 que por contrato pertenecen a macOS/Linux.
 
+## Cierre interactivo P1.7
+
+El flujo recomendado del menú es:
+
+1. **Preparar/verificar instalación** la primera vez o después de una falla de
+   dependencias.
+2. **Inspeccionar sin cambios** la carpeta para conocer asociaciones,
+   colisiones y decisiones pendientes.
+3. **Procesar** solamente cuando el plan sea inequívoco.
+4. **Reanudar** cuando exista un MKV publicado cuyo archivado quedó incompleto.
+5. **Diagnosticar** requisitos sin seleccionar ni modificar un workspace.
+
+Inspección, proceso y reanudación aceptan una ruta escrita o arrastrada al
+terminal; Enter utiliza el directorio desde el que se abrió el menú. La opción
+de restablecimiento elimina únicamente `.venv` y caches Python del repositorio,
+requiere confirmación y se presenta fuera del camino normal.
+
+El wrapper conserva los códigos de la CLI y muestra una explicación distinta:
+
+| Código | Mensaje del menú | Acción sugerida |
+| --- | --- | --- |
+| `0` | Acción completada. | Revisar el resultado o volver al menú. |
+| `1` | Fallo. | Leer la etapa/ruta informada o ejecutar doctor. |
+| `2` | Decisión pendiente; no se ejecutó el lote. | Revisar preflight y usar `--audio` si corresponde. |
+| `3` | Resultado parcial; el MKV publicado se conserva. | Elegir reanudar después de corregir el archivado. |
+
+La ayuda no presenta la herramienta como convertidor, compresor o gestor de
+servidor. Explica que se conservan los streams existentes, que cualquier
+subtítulo válido evita Whisper, que el resultado actual es MKV y que solo los
+insumos realmente incorporados pasan a la cuarentena reversible `trash/`.
+
+## Contrato candidato P2.1: salida MKV o MP4
+
+Este contrato queda documentado para una posible extensión, pero no está
+priorizado ni implementado. El caso de tirones que motivó la evaluación ya era
+MP4, por lo que cambiar contenedor no constituye una solución de rendimiento.
+La CLI actual continúa generando exclusivamente MKV.
+
+Si una incompatibilidad futura lo justifica, P2.1 agregaría una selección
+explícita equivalente a:
+
+```text
+--output-container mkv|mp4
+```
+
+`mkv` será el valor predeterminado. La elección se aplica a todo el lote para
+que las rutas, colisiones y resultados sean deterministas. El preflight siempre
+mostrará el contenedor solicitado y el destino derivado antes de crear staging.
+
+### Matriz de compatibilidad
+
+| Inventario | Salida MKV | Salida MP4 |
+| --- | --- | --- |
+| Video y audio compatibles con copia | Copiar todos. | Copiar todos. |
+| Uno o varios audios compatibles | Conservar todos y sus disposiciones. | Conservar todos y sus disposiciones. |
+| SRT externo o generado | Agregar como pista seleccionable. | Convertir a `mov_text` y verificar contenido y metadata. |
+| Subtítulo embebido de texto representable | Conservar el stream. | Convertir a `mov_text` solo si el contrato puede verificarse. |
+| Subtítulo gráfico o estilo no representable | Conservar el stream. | Bloquear MP4; no omitir, quemar ni ejecutar OCR. |
+| Adjunto, data stream u otro stream incompatible | Conservar si MKV lo admite. | Bloquear MP4; no descartar. |
+| Video o audio que exigiría transcodificación | Copiar si MKV lo admite. | Bloquear MP4; no transcodificar automáticamente. |
+
+La conversión a `mov_text` es la única transformación de codec aceptada en
+P2.1 y se limita a subtítulos de texto. El contenido temporal, idioma, título y
+carácter no predeterminado de cada pista deben seguir siendo verificables. Si
+esa equivalencia no puede demostrarse, MP4 es incompatible para ese video.
+
+### Preflight y ejecución
+
+1. Discovery conserva el inventario completo sin decidir el contenedor.
+2. El planner evalúa cada stream contra el contenedor solicitado.
+3. Una incompatibilidad conocida queda en `needs-input`, identifica índice,
+   tipo y codec y recomienda repetir con `--output-container mkv`.
+4. La aplicación no cambia automáticamente de MP4 a MKV: la ruta solicitada es
+   parte del resultado esperado y del contrato de automatización.
+5. Solo un lote completamente compatible puede iniciar Whisper o FFmpeg.
+6. Mux, verificación, publicación y archivado conservan staging, reservas
+   exclusivas, ausencia de sobrescritura y rollback existentes.
+
+### Verificación y reanudación
+
+- El verificador exige el contenedor seleccionado y la extensión correcta.
+- Todos los streams originales deben estar presentes. Video y audio conservan
+  codec, orden, idioma, disposiciones y metadata estable.
+- Para MP4, cada subtítulo convertido debe corresponder exactamente a un
+  artefacto planificado y continuar seleccionable y no predeterminado.
+- `--resume` solo acepta una salida del contenedor solicitado y vuelve a
+  verificar el contrato completo antes de autorizar el archivado pendiente.
+- Los eventos estructurados de preflight, progreso y resultado identifican el
+  contenedor y la ruta final; los códigos de salida existentes no cambian.
+
+### Límite de rendimiento
+
+Remultiplexar MKV a MP4 puede permitir reproducción directa en un cliente que
+no acepte MKV, pero deja intacto el codec de video. No soluciona un cliente o
+servidor incapaz de decodificar ese codec, perfil o profundidad de bits. P2.1
+no introduce H.264/AAC como normalización automática porque eso requeriría una
+política de transcodificación, calidad, costo y aceleración separada.
+
 ## Red y privacidad
 
 - Whisper se ejecuta localmente y utiliza CPU/GPU del equipo.
@@ -817,9 +915,15 @@ que por contrato pertenecen a macOS/Linux.
 ## Decisiones confirmadas
 
 - MP4 y MKV son entradas equivalentes para el usuario.
-- MKV es la salida principal por su flexibilidad de streams.
+- MKV es la salida predeterminada por su flexibilidad de streams.
+- MP4 permanece como posibilidad no priorizada y no se utiliza como reparación
+  genérica de tirones.
 - No se recodifica ni descarta contenido del original.
+- La única excepción P2.1 es convertir subtítulos de texto a `mov_text` para
+  representarlos dentro de MP4; audio y video siempre se copian.
 - Todos los audios se conservan.
+- Las pistas de audio se preservan como parte del original, pero agregar,
+  buscar o administrar audios no forma parte del objetivo del producto.
 - Todos los subtítulos válidos se incorporan como pistas seleccionables.
 - La presencia de cualquier subtítulo evita la generación.
 - Sin subtítulos se genera uno solo en el idioma hablado.

@@ -194,6 +194,80 @@ Un archivo de 2 GB seguirá conteniendo esencialmente los mismos datos de audio
 y video. El tamaño puede variar levemente por el contenedor y los subtítulos,
 pero no por una compresión deliberada.
 
+## Evaluación P2.1: contenedor de salida seleccionable pendiente
+
+La alternativa está documentada, pero no queda priorizada para implementación.
+El comportamiento publicado continúa produciendo únicamente MKV y P2.1 solo se
+retomará ante una incompatibilidad concreta de un cliente que MP4 resuelva sin
+transcodificar audio o video.
+
+### Evidencia de uso
+
+El uso real es una biblioteca personal centralizada en un servidor Proxmox con
+un Intel Core i5-4440, consumida desde una tablet sin copiar permanentemente
+los archivos al dispositivo. Algunos videos 1080p se reproducen sin problemas
+y otros presentan tirones desde el servidor, aunque esos mismos archivos
+funcionan correctamente cuando se reproducen localmente en la tablet.
+
+La extensión `.mkv` por sí sola no demuestra la causa. El resultado depende de
+la combinación de contenedor, codecs, perfil, profundidad de bits, bitrate,
+subtítulos elegidos, compatibilidad del cliente y de si el servidor entrega el
+archivo directamente, lo remultiplexa o transcodifica. El caso problemático
+inspeccionado resultó ser ya un MP4, por lo que P2.1 no se justifica como
+solución de rendimiento.
+
+### Condiciones si P2.1 se retoma
+
+- MKV continúa siendo la salida predeterminada y de máxima flexibilidad.
+- MP4 se ofrece como salida opcional de compatibilidad cuando el inventario
+  completo puede representarse de forma segura.
+- Elegir MP4 nunca autoriza a recodificar video o audio, reducir resolución,
+  cambiar bitrate, eliminar pistas ni alterar disposiciones de audio.
+- MP4 puede contener varias pistas de audio; P2.1 conserva todas las que ya
+  existen, aunque agregar audios externos continúa fuera de alcance.
+- Los subtítulos de texto que puedan verificarse se convierten a `mov_text`
+  cuando MP4 lo requiere. Esta es una conversión deliberada y limitada al
+  codec de subtítulos para conservarlos como pistas seleccionables; no quema
+  texto sobre el video ni modifica audio o video.
+- Un subtítulo gráfico, un subtítulo con estilo que no pueda representarse sin
+  pérdida aceptable, un adjunto o cualquier otro stream incompatible bloquea
+  MP4 antes del mux. Nunca se omite, quema, aplana ni reemplaza en silencio.
+- Ante una incompatibilidad, el preflight identifica stream y codec y propone
+  MKV. No cambia automáticamente el formato solicitado.
+- La salida esperada será `output/<base>.subtitled.mkv` o
+  `output/<base>.subtitled.mp4`; publicación, verificación, reanudación y
+  cuarentena mantienen las mismas garantías transaccionales.
+
+### Diagnóstico del caso real
+
+El archivo
+`Malcolm.in.the.Middle.Lifes.Still.Unfair.S01E04.english-default.with-subs.mp4`
+contiene video H.264 High Level 4.0, `yuv420p`, 1920x1080 a 23.976 fps y unos
+5.55 Mbps; un audio inglés E-AC-3 5.1 de 256 kbps; y 26 pistas `mov_text`. Una
+pista inglesa está marcada como subtítulo predeterminado. El contenedor promedia
+5.82 Mbps, su pico de video medido por segundo ronda 20.13 Mbps y el átomo
+`moov` ya está al comienzo para acceso progresivo.
+
+Sus 1.50 GB para 34 minutos no son anómalos para 1080p con ese bitrate y no
+demuestran necesidad de compresión. El codec H.264 del caso también descarta la
+hipótesis HEVC para este archivo concreto. El candidato principal es que el
+cliente o servidor no pueda entregar el subtítulo predeterminado o el audio
+E-AC-3 directamente y active transcodificación; si el servidor informa
+`Direct Play`, deben investigarse red, almacenamiento y buffering en lugar de
+recodificar preventivamente.
+
+La ficha oficial del
+[i5-4440](https://www.intel.com/content/www/us/en/products/sku/75038/intel-core-i54440-processor-6m-cache-up-to-3-30-ghz/specifications.html)
+confirma Intel HD Graphics 4600 y Quick Sync, pero todavía debe verificarse que
+la iGPU esté expuesta y utilizada por el servicio alojado en Proxmox. Esa
+configuración pertenece al servidor, no a Subtitles Bridge.
+
+El siguiente diagnóstico requiere conocer el software servidor y observar su
+modo de reproducción y motivo de transcodificación. Una prueba inmediata es
+reproducir el mismo archivo desde el servidor con los subtítulos desactivados:
+si desaparecen los tirones, la pista predeterminada y su tratamiento quedan
+confirmados como disparador.
+
 ## Etapas y responsabilidades previstas
 
 El núcleo se implementará en Python mediante módulos pequeños:
@@ -306,12 +380,32 @@ duración multimedia de cada tipo de etapa completada; informa `null` mientras
 falte una muestra aplicable o una duración válida. `publish` y `archive` quedan
 fuera de la ETA, aunque sus resultados y fallos sí se registran.
 
-## Estado técnico observado (2026-08-08)
+## Política de experiencia interactiva P1.7
 
-El flujo objetivo implementa P0.1-P0.9 y P1.1-P1.6. La puerta local y la matriz
-hospedada validan el núcleo en CPython 3.10-3.13 sobre Linux y en CPython 3.12
-sobre macOS y Windows. Quedan límites operativos explícitos para las siguientes
-fases:
+La herramienta puede operarse desde `menu.sh` sin conocer de memoria las
+opciones avanzadas de la CLI. El menú expone preparación, preflight
+read-only, procesamiento, reanudación, doctor y ayuda como acciones distintas.
+Restablecer el entorno seguirá siendo una acción avanzada con confirmación y
+nunca tocará videos, `output/` o `trash/`.
+
+Cada resultado se explicará según sus códigos públicos: `0` completado u
+omitido, `1` fallo, `2` decisión pendiente y `3` salida publicada con archivado
+incompleto. El menú no reinterpretará un código no cero como éxito y recomendará
+preflight, `--audio` o reanudación solo cuando corresponda.
+
+La ayuda humana y `--help` describen primero el camino normal: elegir una
+carpeta con MP4/MKV y sus SRT, inspeccionarla sin cambios, procesarla y revisar
+`output/` y `trash/`. Configurar un servidor multimedia, solucionar una red o
+agregar pistas externas de audio permanecen fuera del producto.
+
+## Estado técnico observado (2026-08-09)
+
+El flujo objetivo publicado implementa P0.1-P0.9 y P1.1-P1.6. P1.7 tiene una
+implementación local con 226 pruebas verdes, Ruff y sintaxis Bash validados,
+pero espera shfmt, ShellCheck y la matriz hospedada antes de cerrarse. La última
+matriz publicada validó el núcleo en CPython 3.10-3.13 sobre Linux y en CPython
+3.12 sobre macOS y Windows. Quedan límites operativos explícitos para las
+siguientes fases:
 
 - el parser SRT de traducción omite o altera bloques comunes;
 - el parser de traducción todavía contiene mensajes con variables no
@@ -321,16 +415,25 @@ fases:
 - el prototipo de traducción legado usa Google y requiere Internet, pero no
   forma parte de la CLI principal;
 - el normalizador MP4 importado es una CLI monolítica independiente y no debe
-  conectarse sin pruebas de caracterización.
+  conectarse sin pruebas de caracterización;
+- P2.1 conserva un contrato candidato documentado, pero permanece pendiente y
+  no priorizado porque el caso real problemático ya utiliza MP4.
+- P1.7 tiene menú y ayuda implementados localmente y queda pendiente de la
+  puerta completa antes de evaluar extensiones opcionales.
 
 El orden de implementación actualizado está en [`../BACKLOG.md`](../BACKLOG.md).
 
 ## Decisiones confirmadas
 
 - El problema principal son las pistas de subtítulos seleccionables.
-- Se aceptan MP4 y MKV; el resultado principal será MKV.
-- No se recodifica ni elimina ningún stream para producir el resultado.
+- Se aceptan MP4 y MKV; MKV seguirá predeterminado y P2.1 agregará MP4 opcional
+  solo si aparece una necesidad de compatibilidad que lo justifique.
+- No se recodifica ni elimina audio o video para producir el resultado.
+- Si P2.1 se retoma, MP4 aceptará solamente convertir subtítulos de texto a
+  `mov_text`; una incompatibilidad bloqueará antes que omitir contenido.
 - Se conservan todas las pistas de audio.
+- El audio no dirige el alcance del producto: se preserva, pero no se agregan,
+  buscan ni administran nuevas pistas de audio.
 - Se incorporan todos los subtítulos válidos asociados, cualquiera sea su
   idioma.
 - La existencia de cualquier subtítulo válido evita Whisper.

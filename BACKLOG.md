@@ -613,13 +613,96 @@ Hacer que la CLI represente correctamente el resultado de uno o varios videos.
   tiempos, fallos y recuperación parcial. La suite completa ejecuta 223 casos
   con 11 `expectedFailure` legados y la puerta local completa pasa.
 
+### [ ] P1.7 Cerrar la experiencia interactiva y la ayuda
+
+La implementación principal ya es segura, pero el wrapper interactivo solo
+expone setup, ejecución directa y limpieza. Preflight, doctor y reanudación
+existen en la CLI pero quedan ocultos para quien utiliza `menu.sh`, y la ayuda
+no explica códigos de salida ni el flujo recomendado.
+
+**Contrato documentado antes de implementar**
+
+- El menú presentará como acciones principales preparar/verificar instalación,
+  inspeccionar una carpeta sin cambios, procesarla, reanudar un archivado
+  pendiente, ejecutar diagnóstico y consultar ayuda.
+- Restablecer `.venv` y caches seguirá disponible como acción avanzada,
+  separada del flujo normal y protegida por confirmación explícita.
+- Preflight, procesamiento y reanudación compartirán la misma entrada de ruta,
+  incluido drag-and-drop con espacios escapados y directorio actual por defecto.
+- El menú interpretará los códigos `0`, `1`, `2` y `3` con mensajes accionables;
+  nunca mostrará éxito ante decisiones pendientes o un resultado parcial.
+- La ayuda explicará el objetivo único: reutilizar subtítulos válidos o generar
+  uno solo cuando no exista ninguno, incorporarlos como pistas seleccionables,
+  verificar el MKV y recién entonces archivar insumos en `trash/`.
+- Audio existente se preserva, pero agregar o administrar audios, diagnosticar
+  streaming y configurar servidores multimedia quedan fuera del menú.
+- `--help` incluirá flujo seguro, ejemplos frecuentes, códigos de salida y el
+  límite no destructivo; no construirá la aplicación ni requerirá dependencias.
+- Las pruebas de shell y CLI cubrirán argumentos, rutas escapadas, estados y
+  texto esencial sin ejecutar FFmpeg, Whisper, filesystem productivo o red.
+
+**Implementación local preparada**
+
+- `menu.sh` presenta ocho opciones claras: preparación, preflight read-only,
+  procesamiento, reanudación, doctor, ayuda, restablecimiento avanzado y salida.
+- Preflight, procesamiento y reanudación comparten el mismo ingreso de ruta y
+  preservan drag-and-drop con espacios; doctor no solicita un workspace.
+- Los códigos `0`, `1`, `2` y `3` producen mensajes distintos y accionables.
+  Un resultado parcial conserva explícitamente el MKV y dirige a reanudación.
+- La ayuda del menú explica objetivo, flujo normal y límites de seguridad; la
+  opción avanzada confirma que solo elimina `.venv` y caches del repositorio.
+- `--help` describe el flujo seguro, ejemplos, códigos y garantías sin construir
+  la aplicación ni requerir Whisper, FFmpeg o red.
+- Tres pruebas nuevas cubren argumentos exactos de preflight/resume/doctor,
+  estados pendientes/parciales y contenido esencial de ayuda. La suite completa
+  ejecuta 226 casos con 11 `expectedFailure` legados; Ruff, formato Python,
+  sintaxis Bash y `git diff --check` pasan localmente.
+- P1.7 no se marca completa todavía: faltan shfmt `3.13.1` y ShellCheck `0.11.0`
+  en el entorno local para ejecutar `tools/check.py`, y la matriz hospedada aún
+  no validó estos cambios.
+
 ## P2 - Evaluar solo con alcance confirmado
 
 ### [ ] P2.1 Ofrecer salida MP4 opcional
 
-Evaluar MP4 solo si aporta compatibilidad concreta. Nunca debe recodificar o
-descartar streams de forma implícita. Si la fuente no es compatible con un
-remux sin pérdida, la opción debe fallar o requerir una política separada.
+**Pendiente y no priorizado; evaluación documentada el 2026-08-09.**
+
+La evidencia es una biblioteca personal centralizada en Proxmox con un Intel
+Core i5-4440: algunos videos 1080p presentan tirones al servirse a una tablet,
+aunque los mismos archivos funcionan localmente. El caso inspeccionado ya es
+MP4 con H.264, E-AC-3 y 26 subtítulos `mov_text`, por lo que cambiar de MKV a
+MP4 no garantiza ni explica una mejora.
+
+La prioridad confirmada continúa siendo obtener subtítulos cuando faltan y
+dejarlos seleccionables. El audio existente se conserva, pero agregar, buscar o
+administrar pistas de audio no es una funcionalidad objetivo. P2.1 solo se
+retomará ante una incompatibilidad concreta de cliente que MP4 pueda resolver
+sin transcodificar video o audio.
+
+**Contrato de seguridad si se retoma**
+
+- Agregar `--output-container mkv|mp4`, con MKV predeterminado y una elección
+  única para todo el lote.
+- Preservar y copiar todos los streams de video y audio, incluidas múltiples
+  pistas de audio y sus disposiciones; P2.1 no agrega audios externos.
+- Permitir en MP4 únicamente la conversión explícita de subtítulos de texto a
+  `mov_text`, conservándolos seleccionables y no predeterminados.
+- Bloquear MP4 durante preflight cuando un codec, subtítulo gráfico, estilo,
+  adjunto u otro stream no pueda representarse sin pérdida aceptada. Informar
+  índice y codec y sugerir MKV, sin fallback automático.
+- Derivar, verificar, publicar y reanudar la extensión solicitada con las
+  mismas garantías de staging, no sobrescritura, integridad y cuarentena.
+- No prometer que cambiar de contenedor elimina los tirones: comparar un caso
+  fluido y uno problemático y registrar si el servidor hizo direct play,
+  remux o transcodificación. La normalización H.264/AAC queda fuera de P2.1.
+
+**Incrementos posibles, no iniciados**
+
+- [ ] P2.1a Caracterizar compatibilidad MP4 y proteger el flujo MKV existente.
+- [ ] P2.1b Modelar contenedor, rutas y bloqueo read-only en planner/preflight.
+- [ ] P2.1c Implementar mux, verificación, publicación y resume para MP4.
+- [ ] P2.1d Exponer CLI/reporting, completar smokes y validar fixtures reales
+  mínimos sin recodificar audio o video.
 
 ### [ ] P2.2 Reintroducir traducción opcional
 
@@ -659,5 +742,5 @@ contenedor opcional solo cuando el uso fuera del clon lo justifique.
 7. Implementar cuarentena automática y resumen transaccional (P0.8-P0.9).
    **Completado.**
 8. Ejecutar P1 en incrementos pequeños.
-   **P1.6 completado; P1 cerrado.**
+   **P1.7 implementado localmente; pendiente de la puerta completa y CI.**
 9. Repriorizar P2 solamente con evidencia de uso.

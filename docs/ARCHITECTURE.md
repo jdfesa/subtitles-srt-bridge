@@ -382,6 +382,53 @@ se aplican solo a videos con duración conocida. Esta separación evita que
 publicación, archivado, etapas omitidas o constantes arbitrarias produzcan una
 estimación engañosa.
 
+## Extensión P1.7: frontera interactiva
+
+P1.7 no agrega casos de uso al núcleo. `menu.sh` continúa siendo un wrapper que
+elige argumentos de la CLI y presenta sus códigos; no inspecciona medios,
+interpreta planes ni ejecuta adaptadores por cuenta propia.
+
+`cli.py` seguirá siendo la única definición de argumentos. Su parser puede
+incorporar ejemplos y códigos de salida mediante el formatter de argparse, pero
+`--help` debe terminar antes de construir `WorkspaceApplication` o el doctor.
+Las pruebas de shell sustituyen el Python del entorno para observar argumentos
+y estados, mientras los smokes del entry point verifican ayuda real sin
+Whisper, FFmpeg o red.
+
+Las funciones compartidas del menú se limitarán a localizar el entorno,
+solicitar una ruta y traducir códigos de salida a mensajes. Si una futura
+interfaz necesita leer el plan estructurado o resolver decisiones, deberá ser
+otro adaptador sobre JSON Lines y no parsing frágil del texto humano.
+
+## Posible extensión P2.1: política de contenedor
+
+P2.1 permanece pendiente y no priorizada: el caso de reproducción investigado
+ya utiliza MP4 y no demuestra que un cambio de contenedor resuelva el problema.
+Si una incompatibilidad futura justifica retomarla, ampliará el pipeline
+existente; no creará un segundo flujo MP4 ni conectará directamente el
+normalizador legado.
+
+| Módulo o límite | Responsabilidad prevista |
+| --- | --- |
+| `models.py` | Representar el contenedor solicitado y la compatibilidad observada sin cadenas mágicas. |
+| `paths.py` | Derivar staging y salida final con extensión MKV o MP4 sin crear rutas. |
+| `planner.py` | Bloquear antes de ejecutar cualquier stream que MP4 no pueda conservar bajo el contrato. |
+| `adapters/ffmpeg_mux.py` | Construir comandos específicos por contenedor, siempre con copia de video/audio y conversión limitada de texto a `mov_text`. |
+| `verification.py` | Verificar contenedor, preservación de streams y equivalencia de subtítulos convertidos. |
+| `resuming.py` | Reconstruir pruebas únicamente para el contenedor explícitamente solicitado. |
+| `cli.py` y `workspace_application.py` | Propagar una selección única por lote hasta planner, rutas, ejecución y reporting. |
+
+La política de compatibilidad debe ser pura e independiente de FFmpeg para que
+planner y preflight puedan explicarla con pruebas offline. El adaptador de mux
+continúa siendo un efecto detrás de `MediaMuxer`; solo se separará por
+contenedor si los constructores dejan de tener una responsabilidad clara.
+
+`tools/normalize_video_mp4/` aporta caracterización histórica de `mov_text` y
+metadatos, pero su comportamiento de transcodificar por defecto, omitir pistas
+o permitir sobrescritura contradice el contrato actual. No se importará ni se
+copiará como una ruta paralela; cualquier lógica reutilizable se extraerá bajo
+pruebas hacia los límites modulares existentes.
+
 ## Pruebas
 
 Los modelos, rutas, puertos, discovery y planner se prueban con `unittest`,
