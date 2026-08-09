@@ -355,6 +355,33 @@ Los prototipos legados permanecen fuera del alcance de Ruff, pero no fuera de
 la suite. Así la fase establece una línea base limpia para el paquete objetivo
 sin mezclarla con la futura migración o eliminación de scripts históricos.
 
+## Extensión P1.6: observabilidad estructurada
+
+P1.6 agrega observabilidad sin acoplar los casos de uso a JSON, argparse o un
+reloj global difícil de probar:
+
+| Archivo o módulo | Responsabilidad |
+| --- | --- |
+| `observability.py` | Modelar eventos de etapa, serializar JSON Lines v1 y estimar trabajo costoso restante. |
+| `execution.py` | Medir cada etapa con reloj inyectable y publicar eventos sin conocer su representación. |
+| `models.py` | Conservar duración y contexto estructurado del fallo junto al resultado de etapa. |
+| `application.py` | Elegir el reporter en la frontera y garantizar un resultado o fatal final. |
+| `workspace_application.py` | Emitir el preflight antes del progreso con la misma secuencia JSON Lines. |
+| `diagnostics.py` | Reutilizar el formato estructurado para el doctor read-only. |
+
+`BatchExecutor` solo conoce un callback de eventos y un reloj monotónico. El
+reporter mantiene la secuencia, las muestras de rendimiento y la codificación
+JSON; por lo tanto el orquestador continúa utilizable con un observer falso o
+sin reporting. El modo de texto no recibe eventos intermedios y conserva la
+interfaz humana previa, aunque el resumen final ahora muestra duraciones y
+contexto explícito cuando están disponibles.
+
+La ETA utiliza exclusivamente decisiones `run` de `transcribe`, `mux` y
+`verify`. Las tasas se aprenden por tipo de etapa durante el proceso actual y
+se aplican solo a videos con duración conocida. Esta separación evita que
+publicación, archivado, etapas omitidas o constantes arbitrarias produzcan una
+estimación engañosa.
+
 ## Pruebas
 
 Los modelos, rutas, puertos, discovery y planner se prueban con `unittest`,

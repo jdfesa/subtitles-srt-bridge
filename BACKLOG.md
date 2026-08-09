@@ -565,12 +565,53 @@ Hacer que la CLI represente correctamente el resultado de uno o varios videos.
 - La ejecución hospedada corregida `31284416484` pasó la puerta de calidad y
   las seis combinaciones de compatibilidad en macOS, Linux y Windows.
 
-### [ ] P1.6 Mejorar observabilidad
+### [x] P1.6 Mejorar observabilidad
 
 - Mensajes consistentes y salida apta para automatización.
 - ETA basada solo en etapas costosas realmente ejecutadas.
 - Diagnóstico explícito de stream, archivo y etapa que falló.
 - Registro suficiente para auditar un resultado `partial`.
+
+**Contrato documentado antes de implementar**
+
+- El texto continuará como formato predeterminado y
+  `--output-format jsonl` reservará stdout para un objeto JSON completo por
+  línea, sin mezclar formatos.
+- Cada registro usará `schema_version=1`, `sequence` creciente y eventos
+  estables para preflight, etapas, resultado o error fatal.
+- `stage-started` y `stage-finished` identificarán fuente, etapa, estado y ruta
+  objetivo. Un fallo agregará tipo y mensaje de excepción; la transcripción
+  identificará también el stream de audio elegido.
+- La última línea será autosuficiente. Un `partial` conservará salida publicada,
+  destino de cuarentena, etapa `archive` pendiente y `--resume` como acción de
+  recuperación.
+- La ETA considerará únicamente decisiones `run` de `transcribe`, `mux` y
+  `verify`. Aprenderá tasas con reloj monotónico y duración multimedia de
+  etapas completadas en el proceso actual; será `null` si falta una muestra o
+  duración, sin inventar constantes.
+- El modo JSON Lines conservará los códigos de salida existentes y será probado
+  con reloj, stages y writers inyectados, sin FFmpeg, Whisper, red ni efectos
+  reales.
+
+**Resultado**
+
+- `--output-format text|jsonl` conserva texto como valor predeterminado y
+  permite reservar stdout para registros JSON Lines v1 independientes.
+- Preflight, progreso, resultado, doctor y errores fatales utilizan eventos con
+  esquema versionado y secuencia creciente; la última línea de una ejecución es
+  autosuficiente.
+- `BatchExecutor` publica inicio y final de cada etapa ejecutada, mide con reloj
+  monotónico inyectable y conserva duración, ruta objetivo, tipo de excepción y
+  stream de transcripción dentro de `StageResult`.
+- La ETA excluye etapas omitidas, bloqueadas, publicación y archivado. Solo
+  utiliza muestras reales por tipo de `transcribe`, `mux` y `verify`, y queda
+  `null` cuando no puede estimarse honestamente.
+- Un resultado `partial` registra salida publicada, destino de cuarentena,
+  `archive` pendiente y `--resume`; el resumen de texto también muestra la
+  recuperación y el contexto estructurado disponible.
+- Nueve pruebas nuevas cubren esquema, secuencia, ETA, doctor, smoke real,
+  tiempos, fallos y recuperación parcial. La suite completa ejecuta 223 casos
+  con 11 `expectedFailure` legados y la puerta local completa pasa.
 
 ## P2 - Evaluar solo con alcance confirmado
 
@@ -618,5 +659,5 @@ contenedor opcional solo cuando el uso fuera del clon lo justifique.
 7. Implementar cuarentena automática y resumen transaccional (P0.8-P0.9).
    **Completado.**
 8. Ejecutar P1 en incrementos pequeños.
-   **P1.5 completado; siguiente fase: P1.6.**
+   **P1.6 completado; P1 cerrado.**
 9. Repriorizar P2 solamente con evidencia de uso.

@@ -507,6 +507,56 @@ anuncia éxito cuando el proceso devuelve `0`; cualquier otro valor se muestra
 como ejecución no completada. La definición de argumentos y la independencia
 del directorio actual continúan en P1.1-P1.2.
 
+## Observabilidad estructurada P1.6
+
+`--output-format` acepta `text` y `jsonl`. El modo `text` conserva la interfaz
+humana predeterminada. El modo `jsonl` reserva stdout para una secuencia de
+registros JSON Lines: cada llamada al writer contiene exactamente un objeto
+JSON completo y ninguna línea combina texto libre con JSON.
+
+Todos los registros contienen:
+
+- `schema_version: 1`, para evolucionar el contrato de forma explícita;
+- `sequence`, entero creciente desde `1` dentro del proceso;
+- `event`, nombre estable del evento.
+
+La ejecución normal emite `preflight`, cero o más `stage-started` y
+`stage-finished`, y termina con exactamente uno de `batch-result` o `fatal`.
+`--preflight` termina con `preflight-result`; `--doctor` utiliza
+`doctor-result` o `fatal`. El proceso conserva los códigos `0`, `1`, `2` y `3`
+ya documentados: JSON Lines cambia la representación, no la semántica.
+
+Cada evento de etapa identifica `source`, `stage`, estado y ruta objetivo. Una
+etapa fallida incluye `error_type` y `error_message`; `transcribe` agrega el
+índice del audio elegido. El resultado final vuelve a incluir todos los
+resultados de etapa para que la última línea sea autosuficiente, aun cuando un
+consumidor no haya conservado los eventos anteriores.
+
+Un video `partial` expone de forma estructurada:
+
+- el MKV publicado que continúa siendo válido;
+- el destino de `trash/` que no pudo completarse;
+- `archive` como etapa pendiente;
+- `--resume` como acción segura de recuperación.
+
+### ETA de trabajo costoso
+
+El conjunto costoso es fijo y explícito: `transcribe`, `mux` y `verify`.
+Solamente las decisiones `run` ingresan al cálculo; `skip`, `needs-input`,
+`publish` y `archive` nunca aumentan la ETA.
+
+El reloj monotónico es inyectable. Al completar una etapa costosa con duración
+multimedia positiva, el estimador aprende segundos reales por segundo de media
+para ese tipo de etapa durante el proceso actual. La ETA suma únicamente el
+trabajo costoso restante usando muestras del mismo tipo. Si falta la duración
+del video o todavía no existe una muestra para alguna etapa restante,
+`eta_seconds` es `null` en vez de presentar una precisión falsa. Cada evento
+informa también `remaining_expensive_stages`, que sí es exacto desde el plan.
+
+Las muestras no se persisten entre ejecuciones ni contienen nombres de usuario,
+contenido de subtítulos o datos remotos. Los tests sustituyen reloj, etapas y
+writer para mantener el contrato determinista y offline.
+
 ## Entrada ejecutable P1.1
 
 P1.1 conecta el pipeline objetivo mediante una CLI Python mínima. Recibe una

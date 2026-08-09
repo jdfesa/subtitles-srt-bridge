@@ -64,11 +64,11 @@ videos/
 
 ## Estado del proyecto
 
-Las fases P0.1-P0.9 y P1.1-P1.4 están completas. La CLI Python ya conecta discovery,
-planner, transcripción fallback, remux, verificación, publicación, cuarentena,
-resumen y códigos de salida en un único flujo. `menu.sh` llama esa misma CLI y
-puede abrirse desde cualquier directorio sin confundir la raíz del repositorio
-con la carpeta de videos.
+Las fases P0.1-P0.9 y P1.1-P1.6 están completas. La CLI Python ya conecta
+discovery, planner, transcripción fallback, remux, verificación, publicación,
+cuarentena, resumen y códigos de salida en un único flujo. `menu.sh` llama esa
+misma CLI y puede abrirse desde cualquier directorio sin confundir la raíz del
+repositorio con la carpeta de videos.
 
 La configuración P1.2 permite ejecutar solo el preflight, elegir el audio por
 video, seleccionar modelo y dispositivo de Whisper y reanudar una salida
@@ -83,6 +83,11 @@ misma CLI.
 P1.4 fija la dependencia directa del flujo principal, admite CPython 3.10 a
 3.13 y separa la traducción remota heredada para que la instalación normal no
 agregue backends de red ni pins transitivos específicos de una plataforma.
+
+P1.5 agrega una puerta local reproducible y GitHub Actions sobre CPython
+3.10-3.13, macOS, Linux y Windows. P1.6 incorpora JSON Lines versionado,
+progreso por etapa, tiempos monotónicos, ETA basada en muestras reales y
+diagnóstico estructurado de fallos y resultados parciales.
 
 ## Ejecución
 
@@ -119,11 +124,22 @@ python3 /ruta/al/repositorio/subtitles_bridge_cli.py /ruta/a/videos \
 
 # Verificar una salida publicada y reanudar únicamente el archivado pendiente
 python3 /ruta/al/repositorio/subtitles_bridge_cli.py /ruta/a/videos --resume
+
+# Emitir preflight, progreso y resultado como un objeto JSON por línea
+python3 /ruta/al/repositorio/subtitles_bridge_cli.py /ruta/a/videos \
+  --output-format jsonl
 ```
 
 `--audio` puede repetirse para distintos videos. Sin `--resume`, una salida
 existente es una colisión; con `--resume`, solo se acepta si supera nuevamente
 el contrato completo. `trash/` nunca se fusiona, reemplaza ni vacía.
+
+`--output-format text` es el valor predeterminado. Con `jsonl`, stdout contiene
+exclusivamente registros JSON Lines con esquema `1` y secuencia creciente. La
+ETA considera solo `transcribe`, `mux` y `verify` realmente planificados; queda
+en `null` hasta disponer de duración multimedia y muestras reales comparables.
+Un resultado `partial` incluye el MKV publicado, el destino pendiente y
+`--resume` como recuperación segura.
 
 ## Instalación y diagnóstico
 
@@ -182,7 +198,7 @@ normal. Un `unexpected success` hace fallar la suite para evitar mantener una
 marca obsoleta.
 
 El inventario de esas reproducciones está en [`tests/README.md`](tests/README.md).
-La suite completa ejecuta 214 casos y mantiene 11 defectos del prototipo
+La suite completa ejecuta 223 casos y mantiene 11 defectos del prototipo
 legado como `expectedFailure`.
 
 ## Checks automáticos
@@ -230,7 +246,7 @@ CLI estarán implementadas en Python.
   SRT, FFprobe, planner, resumen previo, transcripción local y remux MKV en
   staging, verificación contractual, publicación atómica, cuarentena segura,
   orquestación inyectable, resultados detallados, reanudación verificada y
-  composición de aplicación y diagnóstico portable.
+  composición de aplicación, diagnóstico portable y observabilidad JSON Lines.
 - `tools/normalize_video_mp4/`: utilidad independiente importada para estudiar
   FFprobe, FFmpeg y metadata; no define el contenedor final del nuevo pipeline.
 

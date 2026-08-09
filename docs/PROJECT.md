@@ -284,9 +284,31 @@ Windows. Cubre todas las versiones CPython soportadas sin instalar Whisper ni
 FFmpeg: las pruebas sustituyen dependencias externas y los smokes se limitan a
 `--help` y al límite read-only de inspección expuesto como `--preflight`.
 
+## Política de observabilidad P1.6
+
+El texto legible continúa siendo la salida predeterminada. Para automatización,
+`--output-format jsonl` emite exclusivamente objetos JSON independientes, uno
+por línea, sin mezclar encabezados ni mensajes libres. Cada registro incluye
+`schema_version`, un `sequence` creciente y un nombre de `event`; la primera
+versión del esquema es `1`.
+
+La secuencia estructurada distingue preflight, inicio y final de etapas, y
+resultado final o error fatal. Los fallos de etapa registran como campos la
+fuente, etapa, tipo de excepción, mensaje, ruta objetivo y, cuando corresponde,
+el índice del stream de audio. Un resultado `partial` conserva además la salida
+publicada, el destino de cuarentena, la etapa pendiente y la acción explícita
+de reanudación.
+
+La ETA nunca se basa en etapas omitidas ni en constantes de rendimiento
+inventadas. Solo `transcribe`, `mux` y `verify` se consideran costosas. Durante
+una ejecución, el estimador aprende la relación entre tiempo monotónico real y
+duración multimedia de cada tipo de etapa completada; informa `null` mientras
+falte una muestra aplicable o una duración válida. `publish` y `archive` quedan
+fuera de la ETA, aunque sus resultados y fallos sí se registran.
+
 ## Estado técnico observado (2026-08-08)
 
-El flujo objetivo implementa P0.1-P0.9 y P1.1-P1.5. La puerta local y la matriz
+El flujo objetivo implementa P0.1-P0.9 y P1.1-P1.6. La puerta local y la matriz
 hospedada validan el núcleo en CPython 3.10-3.13 sobre Linux y en CPython 3.12
 sobre macOS y Windows. Quedan límites operativos explícitos para las siguientes
 fases:
